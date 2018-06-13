@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+    <category label="Movies">
+        <setting label="Automation" type="lsep"/>
+        <setting id="movies.auto.active" label="Activate automation" type="bool" default="true"/>
+        <setting id="movies.import.auto" label="import on library (re)scan" type="bool" default="true" subsetting="true" enable="eq(-1,true)"/>
+        <setting id="movies.export.auto" label="export on watched status update" type="bool" default="true" subsetting="true" enable="eq(-2,true)"/>
+        <setting id="movies.auto.notify" label="notify on completion" type="bool" default="true" subsetting="true" enable="eq(-3,true)"/>
+
+        <setting label="Tweaks" type="lsep"/>
+        <setting label="Import (from nfo):" enable="eq(-5,true) + eq(-4,true)"/>
+        <setting id="movies.import.autoclean" label="clean library on completion" type="bool" default="true" subsetting="true"/>
+        <setting label="Export (to nfo):" enable="eq(-7,true) + eq(-5,true)"/>
+        <setting id="movies.export.watched" label="export extra tag 'watched'" type="bool" default="true" subsetting="true"/>
+        <setting id="movies.export.userrating" label="export user rating" type="bool" default="true" subsetting="true"/>
+        <setting id="movies.export.rebuild" label="allow full nfo rebuild (experimental, activate only if you know what you're doing!)" type="bool" default="false" subsetting="true"/>
+
+        <!-- <setting label="Kodi -> NFO" type="lsep"/>
+        <setting id="movies.active" type="bool"/>
+        <setting id="movies.from_kodi.active" label="Activate" type="bool" default="true"/>
+        <setting id="movies.from_kodi.trigger.scan"label="Trigger on library update" type="bool" default="true" enable="eq(-1,true)" subsetting="true"/>
+        <setting label="Tweaks" subsetting="true"/>
+        <setting id="movies.from_kodi.extended" label="Dump watched state" type="bool" default="false" enable="eq(-2,true)" subsetting="true"/> -->
+    </category>
+    <category label="Debug">
+      <setting label="Update library" type="action" action="UpdateLibrary(video)"/>
+    </category>
+</settings>

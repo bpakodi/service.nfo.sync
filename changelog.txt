@@ -1,0 +1,7 @@
+0.0.1: initial release
+  - New:
+    - Monitor: catch and manage some events
+    - Import: scan modified nfo files and perform db entry refresh
+    - Export: export only chosen tags OR build a whole new nfo file
+    - Misc: some helper classes and functions: log, json-rpc, exceptions
+    - Artwork: we have a logo :)
