@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import xbmcvfs
 from bs4 import BeautifulSoup
 from resources.lib.helpers import addon
-from resources.lib.tasks import TaskFileError
+from resources.lib.tasks import TaskScriptError, TaskFileError
 from resources.lib.tasks.export_base import ExportTask, ExportTaskError
 
 class ExportWatchedTaskError(ExportTaskError):
@@ -32,22 +32,51 @@ class ExportWatchedTask(ExportTask):
                 # copy value retrieved from library into the element
                 elt.string = str(self.details[tag_name])
 
+            # execute external script to patch the XML structure before saving
+            var1 = "myvar1"
+            var2 = "myvar2"
+            script = """
+import xbmc
+xbmc.log('from script :-)')
+xbmc.log(repr(self))
+self.log.debug('get a global - addon = %s' % addon.getAddonInfo('name'))
+self.log.debug('can even use self !!!')
+self.log.debug('var1 = %s' % str(var1))
+self.log.debug('var2 = %s' % str(var2))
+            """
+
+            try:
+                self.log.debug('executing script: %s' % 'inner code')
+                self.exec_script(script, globals_dict = globals(), locals_dict = {
+                  'self': self,
+                  'var1': var1
+                })
+            except TaskScriptError as e:
+                self.log.error('error executing script: \'%s\'' % e.path)
+                self.log.error(str(e))
+                self.log.notice(' => ignoring script error => proceeding with nfo file update anyway')
+
             # write content to NFO file
             self.save_nfo(self.nfo_path, root)
+
         except TaskFileError as e:
+            self.log.error('error updating nfo file: \'%s\'' % e.path)
+            self.log.error(str(e))
             # try to regenerate the nfo file if setting is set
             if (addon.getSettingBool('movies.export.rebuild')):
-                self.log.notice('%s, regenerating the whole file...' % e)
+                self.log.notice(' => regenerating nfo file: \'%s\'' % self.nfo_path)
                 return self.export_all()
             else:
-                self.log.warning('%s, but we are not going to regenerate it (see settings)' % e)
+                self.log.warning(' => aborting nfo file update: \'%s\'' % self.nfo_path)
+                self.notify('%s export failed', 'error updating nfo, see log', True)
                 return False
         except Exception as e:
-            self.log.error('error caught while updating nfo file: %s: %s' % (e.__class__.__name__, str(e)))
+            self.log.error('error updating nfo file: \'%s\': %s: %s' % (self.nfo_path, e.__class__.__name__, str(e)))
             # raise
+            self.notify('%s export failed', 'error updating nfo, see log', True)
             return False
 
-        self.notify_result()
+        self.notify('%s export complete' % self.video_type, notify_user = True)
         return True
 
     # fallback to ExportAllTask, in order to regenerate the file completely

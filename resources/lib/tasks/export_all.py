@@ -11,7 +11,7 @@ class ExportAllTaskError(ExportTaskError):
 class ExportAllTask(ExportTask):
     JSONRPC_PROPS = [ 'file', 'title', 'genre', 'year', 'rating', 'director', 'trailer', 'tagline', 'plot', 'plotoutline', 'originaltitle', 'lastplayed', 'playcount', 'writer', 'studio', 'mpaa', 'cast', 'country', 'imdbnumber', 'runtime', 'set', 'showlink', 'streamdetails', 'top250', 'votes', 'fanart', 'thumbnail', 'sorttitle', 'resume', 'setid', 'dateadded', 'tag', 'art', 'userrating', 'ratings', 'premiered', 'uniqueid' ] # fields to be retrieved from library
     TAGS = [ 'title', 'originaltitle', 'sorttitle', 'ratings', 'top250', 'outline', 'plot', 'tagline', 'runtime', 'thumb', 'fanart', 'mpaa', 'playcount', 'lastplayed', 'id', 'uniqueid', 'genre', 'country', 'set', 'tag', 'credits', 'director', 'premiered', 'year', 'studio', 'trailer', 'fileinfo', 'actor', 'resume', 'dateadded' ] # tags to be inserted in nfo (see https://kodi.wiki/view/NFO_files/Movies); they will be processed sequentially in export()
-    EXCLUDED_TAGS = [ 'userrating', 'showlink' ] # userrating is added dynamically if settings is true
+    EXCLUDED_TAGS = [ 'userrating', 'showlink' ] # userrating is added dynamically if settings is true (same as watched)
 
     def __init__(self, monitor, video_type, video_id):
         super(ExportAllTask, self).__init__(monitor, video_type, video_id)

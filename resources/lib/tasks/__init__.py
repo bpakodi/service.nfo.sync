@@ -37,7 +37,22 @@ class Thread(BaseThread):
 
 class TaskError(Error):
     pass
-class TaskFileError(TaskError):
+# base class for task exceptions with a path
+class TaskPathError(TaskError):
+    def __init__(self, path, err_msg, ex = None):
+        # super(TaskPathError, self).__init__()
+        self.path = path
+        self.err_msg = err_msg
+        self.ex = ex
+    def __str__(self):
+        if (self.ex):
+            return '%s: %s: %s' % (self.err_msg, self.ex.__class__.__name__, str(self.ex))
+        else:
+            return '%s' % self.err_msg
+
+class TaskFileError(TaskPathError):
+    pass
+class TaskScriptError(TaskPathError):
     pass
 
 # Base class for tasks, to be derived for each video type: movies, tvshow, season, episode
@@ -107,14 +122,13 @@ class BaseTask(object):
             self.log.error(str(e))
 
     # log (and optionally visually notify) the results on task completion
-    def notify_result(self, result_details = '', notify_user = False):
-        result_status = '%s %s %s' % (self.video_type, self.task_type, 'failed' if (self.errors) else 'successful')
+    def notify(self, msg, details = '', notify_user = False):
         # process log
-        log_str = result_status + ((': ' + result_details) if (result_details) else '')
+        log_str = msg + ((': ' + details) if (details) else '')
         self.log.log(log_str, xbmc.LOGERROR if (self.errors) else xbmc.LOGINFO)
         # optionally notify user
         if (notify_user):
-            notify_str = result_status + (('\n' + result_details) if (result_details) else '')
+            notify_str = msg + (('\n' + details) if (details) else '')
             notify(notify_str)
 
     # helper methods: load / save to addon data location
@@ -127,8 +141,7 @@ class BaseTask(object):
             fp.close()
             return data
         except Exception as e:
-            # return gracefully
-            return None
+            raise TaskFileError(path, 'cannot load data file', e)
     # save data to file
     def save_data(self, path, data):
         full_path = os.path.join(addon_profile, path)
@@ -136,30 +149,43 @@ class BaseTask(object):
             fp = xbmcvfs.File(full_path, 'w')
             result = fp.write(data.encode('utf-8'))
             fp.close()
-            return result
         except Exception as e:
-            # return gracefully
-            return False
+            raise TaskFileError(path, 'cannot save data file', e)
+
+        # it seems xbmcvfs does not raise any exception...
+        if (not result):
+            raise TaskFileError(path, 'cannot save data file: unknown error')
+
 
     # helper methods: load / save nfo file (XML)
-    # load soup from file
+    # load soup from nfo file
     def load_nfo(self, nfo_path, root_tag):
         # check if the nfo file already exists
         if (not xbmcvfs.exists(nfo_path)):
-            raise TaskFileError('file \'%s\' does not exist' % nfo_path)
+            raise TaskFileError(nfo_path, 'nfo file does not exist')
 
         # now open the file for reading, and get the content
-        fp = xbmcvfs.File(nfo_path)
-        raw = fp.read()
-        fp.close()
+        try:
+            fp = xbmcvfs.File(nfo_path)
+            raw = fp.read()
+            fp.close()
+        except Exception as e:
+            raise TaskFileError(nfo_path, 'cannot load nfo file', e)
 
         # load XML tree from file content
-        soup = BeautifulSoup(raw, 'html.parser')
-        root = soup.find(root_tag)
+        try:
+            soup = BeautifulSoup(raw, 'html.parser')
+            root = soup.find(root_tag)
+        except Exception as e:
+            raise TaskFileError(nfo_path, 'invalid nfo file: not a valid XML document', e)
+
         # check if the XML content is valid
         if (root is None):
-            raise TaskFileError('file \'%s\' is invalid, cannot find root tag \'%s\'' % (nfo_path, root_tag))
+            raise TaskFileError(nfo_path, 'invalid nfo file: no root tag \'%s\'' % root_tag)
+        # everything OK, return
         return (soup, root)
+
+    # save soup tag to nfo file
     def save_nfo(self, nfo_path, root):
         try:
             # delete file first
@@ -171,10 +197,21 @@ class BaseTask(object):
             result = fp.write(content)
             return result
         except Exception as e:
-            raise TaskFileError('cannot save nfo file \'%s\': %s' % (nfo_path, str(e)))
+            raise TaskFileError(nfo_path, 'cannot save nfo file', e)
         finally:
             if (fp):
                 fp.close()
+
+    # execute a python script
+    # args:
+    #   locals_dict: locals, see exec documentation for help
+    #   locals_dict: locals, see exec documentation for help
+    def exec_script(self, script, globals_dict = {}, locals_dict = {}):
+        try:
+            exec(script, globals_dict, locals_dict)
+            return True
+        except Exception as e:
+            raise TaskScriptError('script/path/here', 'error while executing script', e)
 
 # A dummy task, useful for testing
 class SleepTask(BaseTask):
