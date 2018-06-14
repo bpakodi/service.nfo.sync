@@ -2,7 +2,8 @@ from __future__ import unicode_literals
 import xbmcvfs
 from bs4 import BeautifulSoup
 from resources.lib.helpers import addon
-from resources.lib.tasks.export_base import ExportTask, ExportTaskError, ExportFileError
+from resources.lib.tasks import TaskFileError
+from resources.lib.tasks.export_base import ExportTask, ExportTaskError
 
 class ExportAllTaskError(ExportTaskError):
     pass
@@ -10,7 +11,7 @@ class ExportAllTaskError(ExportTaskError):
 class ExportAllTask(ExportTask):
     JSONRPC_PROPS = [ 'file', 'title', 'genre', 'year', 'rating', 'director', 'trailer', 'tagline', 'plot', 'plotoutline', 'originaltitle', 'lastplayed', 'playcount', 'writer', 'studio', 'mpaa', 'cast', 'country', 'imdbnumber', 'runtime', 'set', 'showlink', 'streamdetails', 'top250', 'votes', 'fanart', 'thumbnail', 'sorttitle', 'resume', 'setid', 'dateadded', 'tag', 'art', 'userrating', 'ratings', 'premiered', 'uniqueid' ] # fields to be retrieved from library
     TAGS = [ 'title', 'originaltitle', 'sorttitle', 'ratings', 'top250', 'outline', 'plot', 'tagline', 'runtime', 'thumb', 'fanart', 'mpaa', 'playcount', 'lastplayed', 'id', 'uniqueid', 'genre', 'country', 'set', 'tag', 'credits', 'director', 'premiered', 'year', 'studio', 'trailer', 'fileinfo', 'actor', 'resume', 'dateadded' ] # tags to be inserted in nfo (see https://kodi.wiki/view/NFO_files/Movies); they will be processed sequentially in export()
-    EXCLUDED_TAGS = [ 'userrating', 'showlink' ]
+    EXCLUDED_TAGS = [ 'userrating', 'showlink' ] # userrating is added dynamically if settings is true
 
     def __init__(self, monitor, video_type, video_id):
         super(ExportAllTask, self).__init__(monitor, video_type, video_id)
@@ -25,7 +26,7 @@ class ExportAllTask(ExportTask):
             soup.append(root)
 
             # append child nodes
-            for tag_name in self.TAGS:
+            for tag_name in self.tags:
                 # filter specific processings
                 if (tag_name == 'ratings'):
                     elt = soup.new_tag('ratings')
@@ -87,7 +88,6 @@ class ExportAllTask(ExportTask):
                 elif (tag_name == 'set'):
                     if (int(self.details['setid']) == 0):
                         continue
-                    self.log.debug('create %s: %s' % (tag_name, str(self.details['setid'])))
                     # here we need to grab some data
                     set_details = self.get_details(self.details['setid'], 'set', properties = ['title', 'plot']) # overload self.video_type to execute this specific query
                     elt = soup.new_tag('set')
@@ -175,10 +175,10 @@ class ExportAllTask(ExportTask):
                     root.append(elt)
 
             # write content to NFO file
-            self.write_nfo(soup.prettify_with_indent(encoding='utf-8'))
+            self.save_nfo(self.nfo_path, root)
         except Exception as e:
-            self.log.error('error caught while creating nfo file: %s: %s' % (e.__class__.__name__, str(e)))
-            raise
+            self.log.error('error caught while creating nfo file: %s: %s' % (e.__class__.__name__, e))
+            # raise
             return False
 
         return True

@@ -6,8 +6,6 @@ from resources.lib.tasks import BaseTask, TaskError
 
 class ExportTaskError(TaskError):
     pass
-class ExportFileError(ExportTaskError):
-    pass
 
 # base task for exporting a single video entry to nfo file
 class ExportTask(BaseTask):
@@ -38,12 +36,3 @@ class ExportTask(BaseTask):
     # main task method, the task will get destroyed on exit
     def run(self):
         return self.export()
-
-    def write_nfo(self, content):
-        # delete file first, to bypass strange issues when the new file content is smaller than the previous one
-        xbmcvfs.delete(self.nfo_path)
-        # write file
-        fp = xbmcvfs.File(self.nfo_path, 'w')
-        result = fp.write(content)
-        fp.close()
-        return result

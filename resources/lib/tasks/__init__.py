@@ -37,6 +37,8 @@ class Thread(BaseThread):
 
 class TaskError(Error):
     pass
+class TaskFileError(TaskError):
+    pass
 
 # Base class for tasks, to be derived for each video type: movies, tvshow, season, episode
 class BaseTask(object):
@@ -139,6 +141,40 @@ class BaseTask(object):
             # return gracefully
             return False
 
+    # helper methods: load / save nfo file (XML)
+    # load soup from file
+    def load_nfo(self, nfo_path, root_tag):
+        # check if the nfo file already exists
+        if (not xbmcvfs.exists(nfo_path)):
+            raise TaskFileError('file \'%s\' does not exist' % nfo_path)
+
+        # now open the file for reading, and get the content
+        fp = xbmcvfs.File(nfo_path)
+        raw = fp.read()
+        fp.close()
+
+        # load XML tree from file content
+        soup = BeautifulSoup(raw, 'html.parser')
+        root = soup.find(root_tag)
+        # check if the XML content is valid
+        if (root is None):
+            raise TaskFileError('file \'%s\' is invalid, cannot find root tag \'%s\'' % (nfo_path, root_tag))
+        return (soup, root)
+    def save_nfo(self, nfo_path, root):
+        try:
+            # delete file first
+            xbmcvfs.delete(self.nfo_path)
+            # write file
+            fp = xbmcvfs.File(self.nfo_path, 'w')
+            content = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            content = content + root.prettify_with_indent(encoding='utf-8')
+            result = fp.write(content)
+            return result
+        except Exception as e:
+            raise TaskFileError('cannot save nfo file \'%s\': %s' % (nfo_path, str(e)))
+        finally:
+            if (fp):
+                fp.close()
 
 # A dummy task, useful for testing
 class SleepTask(BaseTask):
@@ -153,7 +189,7 @@ class SleepTask(BaseTask):
 # Monkey-patch BeautifulSoup, to allow a nicer pretty print
 # see https://stackoverflow.com/questions/47879140/how-to-prettify-html-so-tag-attributes-will-remain-in-one-single-line
 # and https://code.i-harness.com/en/q/b70e4
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 import re
 
 def prettify_with_indent(self, indent_width = 4, single_lines = True, encoding=None, formatter='minimal'):
@@ -176,3 +212,4 @@ def prettify_with_indent(self, indent_width = 4, single_lines = True, encoding=N
     return r.sub(r'\1' * indent_width, output)
 
 BeautifulSoup.prettify_with_indent = prettify_with_indent
+Tag.prettify_with_indent = prettify_with_indent
