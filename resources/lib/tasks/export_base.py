@@ -99,6 +99,7 @@ class ExportTask(BaseTask):
         var1 = "myvar1"
         var2 = "myvar2"
 
+        # check in settings if we should run a script
         script_path = xbmc.translatePath(addon.getSetting('movies.export.script.path'))
         if (not addon.getSettingBool('movies.export.script') or not script_path):
             self.log.debug('not applying any script')

@@ -16,6 +16,7 @@ Main functionalities:
  * import: refresh Kodi entries when a nfo is updated
  * export: update the nfo when an entry is modified (watched status)
  * automate behavior by catching the relevant Kodi events
+ * apply user-defined scripts to modify NFO content on-the-fly very easily
 
 **Note:** only movies are covered for the moment... please be patient :-)
 
