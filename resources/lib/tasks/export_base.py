@@ -1,5 +1,4 @@
 from __future__ import unicode_literals
-import os.path
 import xbmc
 import xbmcvfs
 from resources.lib.helpers import addon
@@ -22,7 +21,7 @@ class ExportTask(BaseTask):
         self.video_id = video_id
         # retrieve video details from the library
         self.details = self.get_details(self.video_id, properties = self.JSONRPC_PROPS)
-        self.nfo_path = os.path.splitext(self.details['file'])[0] + '.nfo'
+        self.nfo_path = self.get_nfo_path(self.details['file'])
 
         # copy tags, in order to add some more, if needed
         self.tags = self.TAGS[:]
@@ -70,8 +69,8 @@ class ExportTask(BaseTask):
             result_status += ' (with script errors)'
             result_details = 'script error: see log for details'
 
+        # write content to NFO file
         try:
-            # write content to NFO file
             self.save_nfo(self.nfo_path, root)
         except TaskFileError as e:
             self.log.error('error saving nfo file: \'%s\'' % e.path)
@@ -96,9 +95,6 @@ class ExportTask(BaseTask):
 
     # run external script to modify the XML content, if applicable
     def apply_script(self, soup, root):
-        var1 = "myvar1"
-        var2 = "myvar2"
-
         # check in settings if we should run a script
         script_path = xbmc.translatePath(addon.getSetting('movies.export.script.path'))
         if (not addon.getSettingBool('movies.export.script') or not script_path):
@@ -108,9 +104,7 @@ class ExportTask(BaseTask):
         # executing the script
         try:
             self.log.debug('executing script: %s' % script_path)
-            self.exec_script(soup, root, script_path, locals_dict = {
-              'var1': var1
-            })
+            self.exec_script(soup, root, script_path, locals_dict = {})
             self.log.debug('script executed: %s' % script_path)
         except TaskScriptError as e:
             self.log.notice('  => ignoring script error => proceeding with nfo file update anyway')

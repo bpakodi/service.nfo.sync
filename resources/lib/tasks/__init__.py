@@ -83,7 +83,7 @@ class BaseTask(object):
         self.task_type = task_type
         self.video_type = video_type
         self.monitor = monitor
-        self.errors = []
+        self.errors = set()
 
     # that is the method that is actually called from Thread.run()
     def _run(self):
@@ -93,6 +93,10 @@ class BaseTask(object):
     # main processing here, to be overriden
     def run(self):
         pass
+
+    # get the nfo file path, given the video one
+    def get_nfo_path(self, video_path):
+        return os.path.splitext(video_path)[0] + '.nfo'
 
     # get all entries from the library for the given video_type
     def get_list(self, **kwargs):
@@ -224,7 +228,7 @@ class BaseTask(object):
         except Exception as e:
             self.log.error('error executing script: %s' % script_path)
             self.log.error(str(e))
-            raise TaskScriptError(script_path, 'error while executing script', e)
+            raise TaskScriptError(script_path, 'error executing script', e)
 
 # A dummy task, useful for testing
 class SleepTask(BaseTask):

@@ -10,7 +10,7 @@ class JSONRPCError(Error):
         self.method = method
         self.error = err
         self.command = command
-        super(self.__class__, self).__init__('JSON-RPC error while executing %s: %s - command was: %s' % (method, str(err), str(command)))
+        super(self.__class__, self).__init__('JSON-RPC error executing %s: %s - command was: %s' % (method, str(err), str(command)))
 
 def exec_jsonrpc(method, id='unknown', **kwargs):
     command = {
