@@ -37,6 +37,23 @@ class Thread(BaseThread):
 
 class TaskError(Error):
     pass
+# base class for task exceptions with a path
+class TaskPathError(TaskError):
+    def __init__(self, path, err_msg, ex = None):
+        # super(TaskPathError, self).__init__()
+        self.path = path
+        self.err_msg = err_msg
+        self.ex = ex
+    def __str__(self):
+        if (self.ex):
+            return '%s: %s: %s' % (self.err_msg, self.ex.__class__.__name__, str(self.ex))
+        else:
+            return '%s' % self.err_msg
+
+class TaskFileError(TaskPathError):
+    pass
+class TaskScriptError(TaskPathError):
+    pass
 
 # Base class for tasks, to be derived for each video type: movies, tvshow, season, episode
 class BaseTask(object):
@@ -66,7 +83,7 @@ class BaseTask(object):
         self.task_type = task_type
         self.video_type = video_type
         self.monitor = monitor
-        self.errors = []
+        self.errors = set()
 
     # that is the method that is actually called from Thread.run()
     def _run(self):
@@ -76,6 +93,10 @@ class BaseTask(object):
     # main processing here, to be overriden
     def run(self):
         pass
+
+    # get the nfo file path, given the video one
+    def get_nfo_path(self, video_path):
+        return os.path.splitext(video_path)[0] + '.nfo'
 
     # get all entries from the library for the given video_type
     def get_list(self, **kwargs):
@@ -105,40 +126,109 @@ class BaseTask(object):
             self.log.error(str(e))
 
     # log (and optionally visually notify) the results on task completion
-    def notify_result(self, result_details = '', notify_user = False):
-        result_status = '%s %s %s' % (self.video_type, self.task_type, 'failed' if (self.errors) else 'successful')
+    def notify(self, msg, details = '', notify_user = False):
         # process log
-        log_str = result_status + ((': ' + result_details) if (result_details) else '')
+        log_str = msg + ((': ' + details) if (details) else '')
         self.log.log(log_str, xbmc.LOGERROR if (self.errors) else xbmc.LOGINFO)
         # optionally notify user
         if (notify_user):
-            notify_str = result_status + (('\n' + result_details) if (result_details) else '')
+            notify_str = msg + (('\n' + details) if (details) else '')
             notify(notify_str)
 
     # helper methods: load / save to addon data location
     # load data from file
-    def load_data(self, path):
-        full_path = os.path.join(addon_profile, path)
+    def load_file(self, path, dir = ''):
+        full_path = os.path.join(dir, path) if dir else path
+        # check if the nfo file already exists
+        if (not xbmcvfs.exists(full_path)):
+            raise TaskFileError(full_path, 'file does not exist')
+        # open and read from it
         try:
             fp = xbmcvfs.File(full_path)
             data = fp.read()
             fp.close()
             return data
         except Exception as e:
-            # return gracefully
-            return None
+            raise TaskFileError(path, 'cannot load file', e)
     # save data to file
-    def save_data(self, path, data):
-        full_path = os.path.join(addon_profile, path)
+    def save_file(self, path, data, dir = ''):
+        full_path = os.path.join(dir, path) if dir else path
+        # xbmcvfs will not truncate the file, if content is smaller than previously, so let's delete the file first
+        xbmcvfs.delete(full_path)
         try:
             fp = xbmcvfs.File(full_path, 'w')
             result = fp.write(data.encode('utf-8'))
             fp.close()
-            return result
         except Exception as e:
-            # return gracefully
-            return False
+            raise TaskFileError(path, 'cannot save file', e)
 
+        # it seems xbmcvfs does not raise any exception at all...
+        if (not result):
+            raise TaskFileError(path, 'cannot save file: unknown error')
+    # load data from data file
+    def load_data(self, path):
+        return self.load_file(path, dir = addon_profile)
+    # save data to data file
+    def save_data(self, path, data):
+        self.save_file(path, data, dir = addon_profile)
+    # load soup from nfo file (XML)
+    def load_nfo(self, nfo_path, root_tag):
+        # load raw data from file (may throw exceptions)
+        raw = self.load_file(nfo_path) # already contains the full path
+        # load XML tree from file content
+        try:
+            soup = BeautifulSoup(raw, 'html.parser')
+            root = soup.find(root_tag)
+        except Exception as e:
+            raise TaskFileError(nfo_path, 'invalid nfo file: not a valid XML document', e)
+
+        # check if the XML content is valid
+        if (root is None):
+            raise TaskFileError(nfo_path, 'invalid nfo file: no root tag \'%s\'' % root_tag)
+        # everything OK, return
+        return (soup, root)
+
+    # save soup tag to nfo file (XML)
+    def save_nfo(self, nfo_path, root):
+        try:
+            content = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            content = content + root.prettify_with_indent(encoding='utf-8')
+            self.save_file(nfo_path, content.decode('utf-8'))
+        except TaskFileError:
+            raise
+        except Exception as e:
+            raise TaskFileError(nfo_path, 'cannot save nfo file', e)
+
+    # execute a python script
+    # args:
+    #   locals_dict: locals, see exec documentation for help
+    def exec_script(self, soup, root, script_path, locals_dict = {}):
+        # preset the locals dict
+        _locals_dict = {
+              'soup': soup,
+              'root': root,
+              'log': self.log,
+        }
+        # apply additional locals from arguments
+        for k, v in locals_dict.iteritems():
+            _locals_dict[k] = v
+
+        # load the script file content
+        try:
+            script_content = self.load_file(script_path)
+        except TaskFileError as e:
+            self.log.error('error loading script file: %s' % script_path)
+            self.log.error(str(e))
+            raise TaskScriptError(script_path, 'error loading script file: %s' % e.err_msg)
+
+        # execute the script content
+        try:
+            exec(script_content, {}, _locals_dict)
+            return True
+        except Exception as e:
+            self.log.error('error executing script: %s' % script_path)
+            self.log.error(str(e))
+            raise TaskScriptError(script_path, 'error executing script', e)
 
 # A dummy task, useful for testing
 class SleepTask(BaseTask):
@@ -153,7 +243,7 @@ class SleepTask(BaseTask):
 # Monkey-patch BeautifulSoup, to allow a nicer pretty print
 # see https://stackoverflow.com/questions/47879140/how-to-prettify-html-so-tag-attributes-will-remain-in-one-single-line
 # and https://code.i-harness.com/en/q/b70e4
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 import re
 
 def prettify_with_indent(self, indent_width = 4, single_lines = True, encoding=None, formatter='minimal'):
@@ -176,3 +266,4 @@ def prettify_with_indent(self, indent_width = 4, single_lines = True, encoding=N
     return r.sub(r'\1' * indent_width, output)
 
 BeautifulSoup.prettify_with_indent = prettify_with_indent
+Tag.prettify_with_indent = prettify_with_indent

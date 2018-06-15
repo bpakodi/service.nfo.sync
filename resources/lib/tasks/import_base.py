@@ -4,11 +4,13 @@ import time
 import xbmc
 import xbmcvfs
 from resources.lib.helpers import addon
-from resources.lib.tasks import BaseTask, TaskError
+from resources.lib.tasks import BaseTask, TaskError, TaskFileError, TaskScriptError
 from resources.lib.helpers.jsonrpc import exec_jsonrpc, JSONRPCError
 from resources.lib.helpers import addon, timestamp_to_str, str_to_timestamp
 
 class ImportTaskError(TaskError):
+    pass
+class ImportTaskScriptError(ImportTaskError):
     pass
 
 class ImportTask(BaseTask):
@@ -16,34 +18,73 @@ class ImportTask(BaseTask):
     def __init__(self, monitor, video_type, last_import = None):
         super(ImportTask, self).__init__(monitor, 'import', video_type)
         # try to get the last_import datetime either from arg, or the tmp file stored in addon data location; fallback to the Epoch
-        self.last_import = last_import or str_to_timestamp(self.load_data(self.LAST_IMPORT_FILE)) or 0
+        try:
+            last_import_from_file = str_to_timestamp(self.load_data(self.LAST_IMPORT_FILE))
+        except TaskFileError, Exception:
+            last_import_from_file = 0
+        self.last_import = last_import or last_import_from_file
         self.this_run = time.time() # save run date of the current task, to override last_import on success
         self.outdated = [] # list of nfo files that are candidates for refresh
 
-
     # main task method, the task will get destroyed on exit
     def run(self):
+        # will be later used when building the status string
+        result_status = '%s import complete' % self.video_type
+        result_details = ''
+        script_error = False
+        # scan the whole library, to find entries with newer nfo files
         self.scan_library()
-        self.refresh_outdated()
-        # analyze results
-        nb_refreshed = len(self.outdated) - len(self.errors)
-        result_details = '%d refreshed' % (nb_refreshed)
-        if (self.errors):
-            result_details += ', %d error(s)' % (len(self.errors))
-        # log and notify user
-        self.notify_result(result_details, addon.getSettingBool('movies.auto.notify'))
-        # save the run datetime as the new last_import
-        if (not self.errors):
-            # save this_run datetime to last_import.tmp
-            self.save_data(self.LAST_IMPORT_FILE, timestamp_to_str(self.this_run))
-        if (addon.getSettingBool('movies.import.autoclean') and nb_refreshed > 0):
-            # automatically clean the library
+
+        # process outdated entries (if any)
+        if (len(self.outdated) > 0):
+            # optionally apply a script to each of these files
             try:
-                self.log.info('automatically cleaning the library...')
-                exec_jsonrpc('VideoLibrary.Clean')
-            except JSONRPCError as e:
-                # just log on error
-                self.log.notice('error while cleaning: %s' % str(e))
+                self.apply_script()
+            except ImportTaskScriptError:
+                script_error = True
+
+            # refresh all outdated entries
+            self.refresh_outdated()
+
+            # analyze results
+            nb_refreshed = len(self.outdated) - len(self.errors)
+            result_details = '%d refreshed' % (nb_refreshed)
+
+            # optionally clean library
+            if (addon.getSettingBool('movies.import.autoclean') and nb_refreshed > 0):
+                try:
+                    self.log.info('automatically cleaning the library...')
+                    exec_jsonrpc('VideoLibrary.Clean')
+                except JSONRPCError as e:
+                    # just log on error
+                    self.log.warning('error cleaning the library: %s' % str(e))
+        else:
+            result_details = 'nothing to import'
+
+        # add some text to notification if there were some errors
+        if (script_error):
+            result_status += ' (with script errors)'
+            result_details += '\nscript error: see log for details'
+
+        if (self.errors):
+            result_status += ' (with errors)'
+            result_details += '\n%d error(s): see log for details' % (len(self.errors))
+
+        # if everything is fine, save the run datetime as the new import resume point
+        if (not script_error and not self.errors):
+            try:
+                self.log.debug('saving last_import to data file \'%s\'' % self.LAST_IMPORT_FILE)
+                # save this_run datetime to last_import.tmp
+                self.save_data(self.LAST_IMPORT_FILE, timestamp_to_str(self.this_run))
+            except TaskFileError as e:
+                self.log.warning('error saving last_import datetime to data file \'%s\': %s' % (e.path, e))
+                self.log.warning('  => next import will probably process all your library again!')
+                result_status += ' (with warning)'
+                result_details += '\nwarning: see log for details'
+
+        # log and notify user
+        self.notify(result_status, result_details, addon.getSettingBool('movies.auto.notify'))
+
 
     # we start by getting the list of all referenced videos of the given video_type
     # this is acceptable, because this task will be triggered AFTER library scans, which means that new nfo files are already integrated in the library
@@ -60,7 +101,8 @@ class ImportTask(BaseTask):
     # inspect a nfo file to check if the corresponding video library entry should be refreshed
     def inspect_nfo(self, video_file, video_data):
         # build .nfo file name from the video one
-        nfo_path = os.path.splitext(video_file)[0] + '.nfo'
+        nfo_path = self.get_nfo_path(video_file)
+
         if (not xbmcvfs.exists(nfo_path)):
             return
         # get the last modified timestamp
@@ -72,15 +114,68 @@ class ImportTask(BaseTask):
             # this entry is outdated, add it to the list for further processing (see run())
             self.outdated.append(video_data)
 
+    # run external script to modify the XML content, if applicable
+    def apply_script(self):
+        # check in settings if we should run a script
+        script_path = xbmc.translatePath(addon.getSetting('movies.import.script.path'))
+        if (not addon.getSettingBool('movies.import.script') or not script_path):
+            self.log.debug('not applying any script on imported nfo files')
+            return
+        self.log.debug('applying following script on imported nfo files: %s' % script_path)
+
+        # first try to load the file, to allow quick exit on error
+        try:
+            script_content = self.load_file(script_path)
+        except TaskFileError as e:
+            self.log.error('error loading script file: %s' % script_path)
+            self.log.error(str(e))
+            self.log.error('  => cannot apply any script on import')
+            raise ImportTaskScriptError('cannot load script: %s' % script_path)
+
+        # loop through all the to-be-imported entries
+        for video_data in self.outdated:
+            # load soup from nfo file
+            try:
+                video_file = video_data['file']
+                nfo_path = self.get_nfo_path(video_file)
+                (soup, root) = self.load_nfo(nfo_path, self.video_type)
+            except TaskFileError as e:
+                self.errors.add(nfo_path)
+                self.log.error('error loading nfo file: %s' % nfo_path)
+                self.log.error(str(e))
+                continue
+
+            # apply script on XML
+            try:
+                self.log.debug('executing script against nfo: %s' % nfo_path)
+                self.exec_script(soup, root, script_path, locals_dict = {})
+            except TaskScriptError as e:
+                self.errors.add(nfo_path)
+                self.log.error('error executing script against nfo: %s' % nfo_path)
+                self.log.error(str(e))
+                self.log.notice('  => ignoring script error => proceeding with nfo import anyway')
+                continue
+
+            # write content to NFO file
+            try:
+                self.save_nfo(nfo_path, root)
+            except TaskFileError as e:
+                self.log.error('error saving nfo file: \'%s\'' % nfo_path)
+                self.log.error(str(e))
+                continue
+
     # refresh outdated video library entries
     # note: Kodi will actually perform delete + add operations, which will result in a new entry id in the lib
     def refresh_outdated(self):
         for video_data in self.outdated:
             try:
+                video_file = video_data['file']
                 self.log.debug('refreshing %s: %s (%d)' % (self.video_type, video_data['label'], video_data['movieid']))
                 result = exec_jsonrpc('VideoLibrary.RefreshMovie', movieid=video_data['movieid'], ignorenfo=False)
                 self.log.debug(str(result))
                 if (result != 'OK'):
+                    self.errors.add(video_file)
                     self.log.warning('%s refresh failed for \'%s\' (%d)' % (self.video_type, video_data['file'], video_data['movieid']))
             except JSONRPCError as e:
                 self.log.error('' + str(e))
+                self.errors.add('JSON-RPC error')
