@@ -54,7 +54,7 @@ class ImportTask(BaseTask):
                 self.save_data(self.LAST_IMPORT_FILE, timestamp_to_str(self.this_run))
             except TaskFileError as e:
                 self.log.warning('error saving last_import datetime to data file \'%s\': %s' % (e.path, e))
-                self.log.warning('next import will probably process all your library!')
+                self.log.warning('  => next import will probably process all your library again!')
                 result_msg += ' (with warning)'
                 result_details += '\nwarning: see log for details'
         # log and notify user

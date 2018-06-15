@@ -133,45 +133,42 @@ class BaseTask(object):
 
     # helper methods: load / save to addon data location
     # load data from file
-    def load_data(self, path):
-        full_path = os.path.join(addon_profile, path)
+    def load_file(self, path, dir = ''):
+        full_path = os.path.join(dir, path) if dir else path
+        # check if the nfo file already exists
+        if (not xbmcvfs.exists(full_path)):
+            raise TaskFileError(full_path, 'file does not exist')
+        # open and read from it
         try:
             fp = xbmcvfs.File(full_path)
             data = fp.read()
             fp.close()
             return data
         except Exception as e:
-            raise TaskFileError(path, 'cannot load data file', e)
+            raise TaskFileError(path, 'cannot load file', e)
     # save data to file
-    def save_data(self, path, data):
-        full_path = os.path.join(addon_profile, path)
+    def save_file(self, path, data, dir = ''):
+        full_path = os.path.join(dir, path) if dir else path
         try:
             fp = xbmcvfs.File(full_path, 'w')
             result = fp.write(data.encode('utf-8'))
             fp.close()
         except Exception as e:
-            raise TaskFileError(path, 'cannot save data file', e)
+            raise TaskFileError(path, 'cannot save file', e)
 
         # it seems xbmcvfs does not raise any exception...
         if (not result):
-            raise TaskFileError(path, 'cannot save data file: unknown error')
-
-
-    # helper methods: load / save nfo file (XML)
-    # load soup from nfo file
+            raise TaskFileError(path, 'cannot save file: unknown error')
+    # load data from data file
+    def load_data(self, path):
+        return self.load_file(path, dir = addon_profile)
+    # save data to data file
+    def save_data(self, path, data):
+        self.save_file(path, data, dir = addon_profile)
+    # load soup from nfo file (XML)
     def load_nfo(self, nfo_path, root_tag):
-        # check if the nfo file already exists
-        if (not xbmcvfs.exists(nfo_path)):
-            raise TaskFileError(nfo_path, 'nfo file does not exist')
-
-        # now open the file for reading, and get the content
-        try:
-            fp = xbmcvfs.File(nfo_path)
-            raw = fp.read()
-            fp.close()
-        except Exception as e:
-            raise TaskFileError(nfo_path, 'cannot load nfo file', e)
-
+        # load raw data from file (may throw exceptions)
+        raw = self.load_file(nfo_path) # already contains the full path
         # load XML tree from file content
         try:
             soup = BeautifulSoup(raw, 'html.parser')
@@ -185,22 +182,16 @@ class BaseTask(object):
         # everything OK, return
         return (soup, root)
 
-    # save soup tag to nfo file
+    # save soup tag to nfo file (XML)
     def save_nfo(self, nfo_path, root):
         try:
-            # delete file first
-            xbmcvfs.delete(self.nfo_path)
-            # write file
-            fp = xbmcvfs.File(self.nfo_path, 'w')
             content = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
             content = content + root.prettify_with_indent(encoding='utf-8')
-            result = fp.write(content)
-            return result
+            self.save_file(nfo_path, content.decode('utf-8'))
+        except TaskFileError:
+            raise
         except Exception as e:
             raise TaskFileError(nfo_path, 'cannot save nfo file', e)
-        finally:
-            if (fp):
-                fp.close()
 
     # execute a python script
     # args:

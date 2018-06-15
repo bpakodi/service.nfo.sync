@@ -16,9 +16,12 @@ class ExportAllTask(ExportTask):
     def __init__(self, monitor, video_type, video_id):
         super(ExportAllTask, self).__init__(monitor, video_type, video_id)
 
+    @property
+    def task_label(self):
+        return '%s export (with rebuild)' % self.video_type
+
     # build a brand new nfo file
-    def export(self):
-        # TODO: manage access right issues
+    def make_xml(self):
         try:
             # build new XML content
             soup = BeautifulSoup('', 'html.parser')
@@ -173,12 +176,8 @@ class ExportAllTask(ExportTask):
                     val = (u'%s' % self.details[tag_name])
                     elt.string = val
                     root.append(elt)
-
-            # write content to NFO file
-            self.save_nfo(self.nfo_path, root)
+            return root
         except Exception as e:
-            self.log.error('error caught while creating nfo file: %s: %s' % (e.__class__.__name__, e))
-            # raise
-            return False
-
-        return True
+            self.log.error('error building nfo file: \'%s\'' % e.path)
+            self.log.error(str(e))
+            raise ExportTaskXMLError('error building nfo file: \'%s\'' % e.path)
