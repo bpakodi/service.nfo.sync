@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import os.path
+import xbmc
 import xbmcvfs
 from resources.lib.helpers import addon
 from resources.lib.tasks import BaseTask, TaskError, TaskFileError, TaskScriptError
@@ -57,14 +58,14 @@ class ExportTask(BaseTask):
 
         try:
             # main XML processing here (method overridden by derived classes)
-            root = self.make_xml()
-        except ExportTaskXMLError:
+            (soup, root) = self.make_xml()
+        except ExportTaskXMLError as e:
             # run some last chance code if any
             return self.on_xml_failure()
 
         # execute external script to patch the XML structure before saving
         try:
-            self.apply_script(root)
+            self.apply_script(soup, root)
         except ExportTaskScriptError:
             result_status += ' (with script errors)'
             result_details = 'script error: see log for details'
@@ -82,7 +83,7 @@ class ExportTask(BaseTask):
         return True
 
     # to be overridden
-    # build (or patch) the xml. Returns a XML node
+    # build (or patch) the xml. Returns a tuple: (soup, XML node)
     # Should raise ExportTaskXMLError on error
     def make_xml(self):
         return None
@@ -94,25 +95,22 @@ class ExportTask(BaseTask):
         return False
 
     # run external script to modify the XML content, if applicable
-    def apply_script(self, root):
+    def apply_script(self, soup, root):
         var1 = "myvar1"
         var2 = "myvar2"
-        script = """
-log.debug('can even log from there!')
-log.debug('var1 = %s' % str(var1))
-log.debug('var2 = %s' % str(var2))
-log.debug('this is the end, my friend')
-        """
 
+        script_path = xbmc.translatePath(addon.getSetting('movies.export.script.path'))
+        if (not addon.getSettingBool('movies.export.script') or not script_path):
+            self.log.debug('not applying any script')
+            return
+
+        # executing the script
         try:
-            self.log.debug('executing script: %s' % 'inner code')
-            self.exec_script(script, globals_dict = globals(), locals_dict = {
-              'log': self.log,
-              'root': root,
+            self.log.debug('executing script: %s' % script_path)
+            self.exec_script(soup, root, script_path, locals_dict = {
               'var1': var1
             })
-        except (TaskScriptError, TaskFileError) as e:
-            self.log.error('error executing script: \'%s\'' % e.path)
-            self.log.error(str(e))
+            self.log.debug('script executed: %s' % script_path)
+        except TaskScriptError as e:
             self.log.notice('  => ignoring script error => proceeding with nfo file update anyway')
             raise ExportTaskScriptError('script error: %s' % str(e))

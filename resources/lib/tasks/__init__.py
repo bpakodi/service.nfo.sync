@@ -149,6 +149,8 @@ class BaseTask(object):
     # save data to file
     def save_file(self, path, data, dir = ''):
         full_path = os.path.join(dir, path) if dir else path
+        # xbmcvfs will not truncate the file, if content is smaller than previously, so let's delete the file first
+        xbmcvfs.delete(full_path)
         try:
             fp = xbmcvfs.File(full_path, 'w')
             result = fp.write(data.encode('utf-8'))
@@ -156,7 +158,7 @@ class BaseTask(object):
         except Exception as e:
             raise TaskFileError(path, 'cannot save file', e)
 
-        # it seems xbmcvfs does not raise any exception...
+        # it seems xbmcvfs does not raise any exception at all...
         if (not result):
             raise TaskFileError(path, 'cannot save file: unknown error')
     # load data from data file
@@ -196,13 +198,33 @@ class BaseTask(object):
     # execute a python script
     # args:
     #   locals_dict: locals, see exec documentation for help
-    #   locals_dict: locals, see exec documentation for help
-    def exec_script(self, script, globals_dict = {}, locals_dict = {}):
+    def exec_script(self, soup, root, script_path, locals_dict = {}):
+        # preset the locals dict
+        _locals_dict = {
+              'soup': soup,
+              'root': root,
+              'log': self.log,
+        }
+        # apply additional locals from arguments
+        for k, v in locals_dict.iteritems():
+            _locals_dict[k] = v
+
+        # load the script file content
         try:
-            exec(script, globals_dict, locals_dict)
+            script_content = self.load_file(script_path)
+        except TaskFileError as e:
+            self.log.error('error loading script file: %s' % script_path)
+            self.log.error(str(e))
+            raise TaskScriptError(script_path, 'error loading script file: %s' % e.err_msg)
+
+        # execute the script content
+        try:
+            exec(script_content, {}, _locals_dict)
             return True
         except Exception as e:
-            raise TaskScriptError('script/path/here', 'error while executing script', e)
+            self.log.error('error executing script: %s' % script_path)
+            self.log.error(str(e))
+            raise TaskScriptError(script_path, 'error while executing script', e)
 
 # A dummy task, useful for testing
 class SleepTask(BaseTask):

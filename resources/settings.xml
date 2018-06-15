@@ -9,13 +9,15 @@
 
         <setting label="Import tweaks" type="lsep"/>
         <setting id="movies.import.autoclean" label="clean library on completion" type="bool" default="true" enable="eq(-5,true) + eq(-4,true)"/>
-        <setting id="movies.import.processing" label="patch the nfo files before importing:" type="bool" default="true" enable="eq(-6,true) + eq(-5,true)"/>
-        <setting id="movies.import.processing.file" label="pre-processing script" type="executable" default="" enable="eq(-1,true)" subsetting="true"/>
+        <setting id="movies.import.script" label="apply script before importing to Kodi:" type="bool" default="true" enable="eq(-6,true) + eq(-5,true)"/>
+        <setting id="movies.import.script.path" label="script path:" type="file" default="" enable="eq(-1,true)" subsetting="true"/>
 
         <setting label="Export tweaks" type="lsep"/>
         <setting id="movies.export.watched" label="export extra tag 'watched'" type="bool" default="true" enable="eq(-9,true) + eq(-7,true)"/>
         <setting id="movies.export.userrating" label="export user rating" type="bool" default="true" enable="eq(-10,true) + eq(-8,true)"/>
         <setting id="movies.export.rebuild" label="allow full nfo rebuild (experimental, activate only if you know what you're doing!)" type="bool" default="false" enable="eq(-11,true) + eq(-9,true)"/>
+        <setting id="movies.export.script" label="apply script before exporting to NFO:" type="bool" default="true" enable="eq(-12,true) + eq(-10,true)"/>
+        <setting id="movies.export.script.path" label="script path:" type="file" default="" enable="eq(-1,true)" subsetting="true"/>
 
         <!-- <setting label="Kodi -> NFO" type="lsep"/>
         <setting id="movies.active" type="bool"/>
