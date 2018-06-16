@@ -58,7 +58,7 @@ class ExportTask(BaseTask):
 
         try:
             # main XML processing here (method overridden by derived classes)
-            (soup, root) = self.make_xml()
+            (soup, root, old_raw) = self.make_xml()
         except ExportTaskXMLError as e:
             # run some last chance code if any
             return self.on_xml_failure()
@@ -72,7 +72,7 @@ class ExportTask(BaseTask):
 
         # write content to NFO file
         try:
-            self.save_nfo(self.nfo_path, root)
+            self.save_nfo(self.nfo_path, root, old_raw)
         except TaskFileError as e:
             self.log.error('error saving nfo file: \'%s\'' % e.path)
             self.log.error(str(e))

@@ -19,7 +19,7 @@ class ExportWatchedTask(ExportTask):
     def make_xml(self):
         try:
             # load soup from file
-            soup, root = self.load_nfo(self.nfo_path, self.video_type)
+            (soup, root, old_raw) = self.load_nfo(self.nfo_path, self.video_type)
             # update XML tree
             for tag_name in self.tags:
                 # get the child element
@@ -31,11 +31,11 @@ class ExportWatchedTask(ExportTask):
                 # copy value retrieved from library into the element
                 elt.string = str(self.details[tag_name])
             # return root node
-            return (soup, root)
+            return (soup, root, old_raw)
         except (TaskFileError, Exception) as e:
-            self.log.error('error loading nfo file: \'%s\'' % e.path)
+            self.log.error('error loading nfo file: \'%s\'' % self.nfo_path)
             self.log.error(str(e))
-            raise ExportTaskXMLError('error loading nfo file: \'%s\'' % e.path)
+            raise ExportTaskXMLError('error loading nfo file: \'%s\'' % self.nfo_path)
 
     def on_xml_failure(self):
         # fallback to ExportAllTask, in order to regenerate the file completely

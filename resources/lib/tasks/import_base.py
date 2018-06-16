@@ -142,7 +142,7 @@ class ImportTask(BaseTask):
             try:
                 video_file = video_data['file']
                 nfo_path = self.get_nfo_path(video_file)
-                (soup, root) = self.load_nfo(nfo_path, self.video_type)
+                (soup, root, old_raw) = self.load_nfo(nfo_path, self.video_type)
             except TaskFileError as e:
                 self.errors.add(nfo_path)
                 self.log.error('error loading nfo file: %s' % nfo_path)
@@ -160,12 +160,12 @@ class ImportTask(BaseTask):
                 self.errors.add(nfo_path)
                 self.log.notice('error executing script against nfo: %s' % nfo_path)
                 self.log.notice(str(e))
-                self.log.notice('  => ignoring script error => proceeding with next nfo anyway')
+                self.log.notice('  => script error, current nfo will NOT be updated => proceeding with next nfo')
                 continue
 
             # write content to NFO file
             try:
-                self.save_nfo(nfo_path, root)
+                self.save_nfo(nfo_path, root, old_raw)
             except TaskFileError as e:
                 self.log.error('error saving nfo file: \'%s\'' % nfo_path)
                 self.log.error(str(e))

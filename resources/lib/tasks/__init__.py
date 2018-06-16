@@ -189,14 +189,24 @@ class BaseTask(object):
         # check if the XML content is valid
         if (root is None):
             raise TaskFileError(nfo_path, 'invalid nfo file: no root tag \'%s\'' % root_tag)
-        # everything OK, return
-        return (soup, root)
+        # everything is OK, return
+        return (soup, root, raw)
 
     # save soup tag to nfo file (XML)
-    def save_nfo(self, nfo_path, root):
+    # if old_raw is set, perform a check, and do not save if identical
+    def save_nfo(self, nfo_path, root, old_raw = None):
+        # generate content
+        content = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        content = content + root.prettify_with_indent(encoding='utf-8')
+
+        # only save if content has been updated
+        # to perform that, we just compare string outputs. Dirty but acceptable, because strictly speaking XML is order-sensitive...
+        if (old_raw and old_raw == content):
+            self.log.debug('not saving to \'%s\': contents are identical' % nfo_path)
+            return
+
         try:
-            content = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
-            content = content + root.prettify_with_indent(encoding='utf-8')
+            self.log.debug('saving to \'%s\'' % nfo_path)
             self.save_file(nfo_path, content.decode('utf-8'))
         except TaskFileError:
             raise
@@ -216,6 +226,7 @@ class BaseTask(object):
             self.log.debug('script executed: \'%s\'' % script_path)
         except ScriptError as e:
             raise TaskScriptError(script_path, str(e))
+
 
 
 # A dummy task, useful for testing

@@ -176,7 +176,7 @@ class ExportAllTask(ExportTask):
                     val = (u'%s' % self.details[tag_name])
                     elt.string = val
                     root.append(elt)
-            return (soup, root)
+            return (soup, root, '') # no old_raw, as we build from scratch
         except Exception as e:
             self.log.error('error building nfo file: \'%s\'' % e.path)
             self.log.error(str(e))
