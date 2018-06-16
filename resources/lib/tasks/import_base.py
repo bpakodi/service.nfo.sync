@@ -7,6 +7,7 @@ from resources.lib.helpers import addon
 from resources.lib.tasks import BaseTask, TaskError, TaskFileError, TaskScriptError
 from resources.lib.helpers.jsonrpc import exec_jsonrpc, JSONRPCError
 from resources.lib.helpers import addon, timestamp_to_str, str_to_timestamp
+from resources.lib.script import FileScriptHandler, ScriptError
 
 class ImportTaskError(TaskError):
     pass
@@ -15,8 +16,8 @@ class ImportTaskScriptError(ImportTaskError):
 
 class ImportTask(BaseTask):
     LAST_IMPORT_FILE = 'last_import.tmp'
-    def __init__(self, monitor, video_type, last_import = None):
-        super(ImportTask, self).__init__(monitor, 'import', video_type)
+    def __init__(self, video_type, last_import = None):
+        super(ImportTask, self).__init__('import', video_type)
         # try to get the last_import datetime either from arg, or the tmp file stored in addon data location; fallback to the Epoch
         try:
             last_import_from_file = str_to_timestamp(self.load_data(self.LAST_IMPORT_FILE))
@@ -81,6 +82,8 @@ class ImportTask(BaseTask):
                 self.log.warning('  => next import will probably process all your library again!')
                 result_status += ' (with warning)'
                 result_details += '\nwarning: see log for details'
+        else:
+                self.log.debug('NOT saving last_import to data file \'%s\', as there were some errors' % self.LAST_IMPORT_FILE)
 
         # log and notify user
         self.notify(result_status, result_details, addon.getSettingBool('movies.auto.notify'))
@@ -125,12 +128,13 @@ class ImportTask(BaseTask):
 
         # first try to load the file, to allow quick exit on error
         try:
-            script_content = self.load_file(script_path)
-        except TaskFileError as e:
-            self.log.error('error loading script file: %s' % script_path)
-            self.log.error(str(e))
-            self.log.error('  => cannot apply any script on import')
-            raise ImportTaskScriptError('cannot load script: %s' % script_path)
+            self.log.debug('initializing script: %s' % script_path)
+            script = FileScriptHandler(script_path, log_prefix = self.__class__.__name__)
+        except ScriptError as e:
+            self.log.notice('error loading script file: \'%s\'' % script_path)
+            self.log.notice(str(e))
+            self.log.notice('  => ignoring script error => proceeding with import anyway')
+            raise ImportTaskScriptError('error loading script: \'%s\'' % script_path) # will not block run()
 
         # loop through all the to-be-imported entries
         for video_data in self.outdated:
@@ -148,12 +152,15 @@ class ImportTask(BaseTask):
             # apply script on XML
             try:
                 self.log.debug('executing script against nfo: %s' % nfo_path)
-                self.exec_script(soup, root, script_path, locals_dict = {})
-            except TaskScriptError as e:
+                script.execute(locals_dict = {
+                    'soup': soup,
+                    'root': root
+                })
+            except ScriptError as e:
                 self.errors.add(nfo_path)
-                self.log.error('error executing script against nfo: %s' % nfo_path)
-                self.log.error(str(e))
-                self.log.notice('  => ignoring script error => proceeding with nfo import anyway')
+                self.log.notice('error executing script against nfo: %s' % nfo_path)
+                self.log.notice(str(e))
+                self.log.notice('  => ignoring script error => proceeding with next nfo anyway')
                 continue
 
             # write content to NFO file
@@ -172,7 +179,6 @@ class ImportTask(BaseTask):
                 video_file = video_data['file']
                 self.log.debug('refreshing %s: %s (%d)' % (self.video_type, video_data['label'], video_data['movieid']))
                 result = exec_jsonrpc('VideoLibrary.RefreshMovie', movieid=video_data['movieid'], ignorenfo=False)
-                self.log.debug(str(result))
                 if (result != 'OK'):
                     self.errors.add(video_file)
                     self.log.warning('%s refresh failed for \'%s\' (%d)' % (self.video_type, video_data['file'], video_data['movieid']))

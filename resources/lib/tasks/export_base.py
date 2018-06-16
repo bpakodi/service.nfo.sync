@@ -16,12 +16,13 @@ class ExportTask(BaseTask):
     JSONRPC_PROPS = [] # fields to be retrieved from library, to be overridden
     TAGS = [] # tags to be inserted in nfo, to be overridden
 
-    def __init__(self, monitor, video_type, video_id):
-        super(ExportTask, self).__init__(monitor, 'export', video_type)
+    def __init__(self, video_type, video_id):
+        super(ExportTask, self).__init__('export', video_type)
         self.video_id = video_id
         # retrieve video details from the library
         self.details = self.get_details(self.video_id, properties = self.JSONRPC_PROPS)
         self.nfo_path = self.get_nfo_path(self.details['file'])
+        self.title = self.details['label']
 
         # copy tags, in order to add some more, if needed
         self.tags = self.TAGS[:]
@@ -37,10 +38,10 @@ class ExportTask(BaseTask):
             self.tags.append('userrating')
 
 
-    # override to customize logs
     @property
-    def task_label(self):
-        return '%s export' % self.video_type
+    def signature(self):
+        return '%s export for \'%s\'' % (self.video_type, self.title)
+
     # useful for notifications and so
     @property
     def video_title(self):
@@ -52,7 +53,7 @@ class ExportTask(BaseTask):
     # main task method, the task will get destroyed on exit
     def run(self):
         # define some notification / log text
-        result_status = '%s complete' % self.task_label # if we encounter an error, this would be used anyway, so let's be optimistic!
+        result_status = '%s complete' % self.signature # if we encounter an error, this would be used anyway, so let's be optimistic!
         result_details = ''
 
         try:
@@ -64,7 +65,7 @@ class ExportTask(BaseTask):
 
         # execute external script to patch the XML structure before saving
         try:
-            self.apply_script(soup, root)
+            self.patch_xml(soup, root)
         except ExportTaskScriptError:
             result_status += ' (with script errors)'
             result_details = 'script error: see log for details'
@@ -78,7 +79,7 @@ class ExportTask(BaseTask):
             return False
 
         # notify user and return successfully
-        self.notify(result_status, '%s%s' % (self.video_title, ('\n' + result_details if result_details else '')), True)
+        self.notify(result_status, (result_details if result_details else ''))
         return True
 
     # to be overridden
@@ -90,11 +91,11 @@ class ExportTask(BaseTask):
     # to be overridden
     # last chance actions before failing, return True to make this task completed successfully
     def on_xml_failure(self):
-        self.notify('%s failed' % self.task_label, '%s\nerror updating nfo, see log' % self.video_title, True)
+        self.notify('%s failed' % self.signature, 'error updating nfo, see log')
         return False
 
     # run external script to modify the XML content, if applicable
-    def apply_script(self, soup, root):
+    def patch_xml(self, soup, root):
         # check in settings if we should run a script
         script_path = xbmc.translatePath(addon.getSetting('movies.export.script.path'))
         if (not addon.getSettingBool('movies.export.script') or not script_path):
@@ -103,9 +104,12 @@ class ExportTask(BaseTask):
 
         # executing the script
         try:
-            self.log.debug('executing script: %s' % script_path)
-            self.exec_script(soup, root, script_path, locals_dict = {})
-            self.log.debug('script executed: %s' % script_path)
+            self.exec_script_file(script_path, locals_dict = {
+                'soup': soup,
+                'root': root
+            })
         except TaskScriptError as e:
-            self.log.notice('  => ignoring script error => proceeding with nfo file update anyway')
+            self.log.notice('error applying script: \'%s\'' % script_path)
+            self.log.notice(str(e))
+            self.log.notice('  => ignoring script error => proceeding with export anyway')
             raise ExportTaskScriptError('script error: %s' % str(e))

@@ -12,8 +12,8 @@ class ExportWatchedTask(ExportTask):
     JSONRPC_PROPS = ['file', 'playcount', 'lastplayed', 'userrating'] # fields to be retrieved from library
     TAGS = ['playcount', 'lastplayed'] # tags to be inserted in nfo; more are added dynamically in ExportTask.__init__()
 
-    def __init__(self, monitor, video_type, video_id):
-        super(ExportWatchedTask, self).__init__(monitor, video_type, video_id)
+    def __init__(self, video_type, video_id):
+        super(ExportWatchedTask, self).__init__(video_type, video_id)
 
     # update the nfo file with up-to_date information only
     def make_xml(self):
@@ -45,9 +45,9 @@ class ExportWatchedTask(ExportTask):
             # instance a ExportAllTask object, and directly execute its run() method
             from resources.lib.tasks.export_all import ExportAllTask
             self.log.notice('falling back to ExportAllTask')
-            task = ExportAllTask(self.monitor, self.video_type, self.video_id)
+            task = ExportAllTask(self.video_type, self.video_id)
             return task.run()
         else:
             self.log.warning('  => aborting nfo file update: \'%s\'' % self.nfo_path)
-            self.notify('%s failed' % self.task_label, '%s\nerror updating nfo, see log' % self.video_title, True)
+            self.notify('%s failed' % self.signature, 'error updating nfo, see log')
             return False
