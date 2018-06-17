@@ -158,7 +158,8 @@ class ImportTask(BaseTask):
                     'nfo_path': nfo_path,
                     'video_path': video_file,
                     'video_type': self.video_type,
-                    'video_title': video_data['label']
+                    'video_title': video_data['label'],
+                    'task_family': self.task_family,
                 })
             except ScriptError as e:
                 self.errors.add(nfo_path)

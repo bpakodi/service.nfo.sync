@@ -110,7 +110,8 @@ class ExportTask(BaseTask):
                 'nfo_path': self.nfo_path,
                 'video_path': self.details['file'],
                 'video_type': self.video_type,
-                'video_title': self.title
+                'video_title': self.title,
+                'task_family': self.task_family,
             })
         except TaskScriptError as e:
             self.log.notice('error applying script: \'%s\'' % script_path)
