@@ -5,15 +5,15 @@ from resources.lib.helpers import addon
 from resources.lib.tasks import TaskScriptError, TaskFileError
 from resources.lib.tasks.export_base import ExportTask, ExportTaskError, ExportTaskXMLError
 
-class ExportWatchedTaskError(ExportTaskError):
+class ExportSingleTaskError(ExportTaskError):
     pass
 
-class ExportWatchedTask(ExportTask):
+class ExportSingleTask(ExportTask):
     JSONRPC_PROPS = ['file', 'playcount', 'lastplayed', 'userrating'] # fields to be retrieved from library
     TAGS = ['playcount', 'lastplayed'] # tags to be inserted in nfo; more are added dynamically in ExportTask.__init__()
 
     def __init__(self, video_type, video_id):
-        super(ExportWatchedTask, self).__init__(video_type, video_id)
+        super(ExportSingleTask, self).__init__(video_type, video_id)
 
     # update the nfo file with up-to_date information only
     def make_xml(self):

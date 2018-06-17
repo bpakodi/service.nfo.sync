@@ -11,7 +11,7 @@ from resources.lib.tasks import Thread
 
 # import various tasks
 from resources.lib.tasks.import_base import ImportTask
-from resources.lib.tasks.export_watched import ExportWatchedTask
+from resources.lib.tasks.export_single import ExportSingleTask
 
 class NFOMonitor(xbmc.Monitor):
     def __init__(self, nb_threads = 2):
@@ -55,5 +55,5 @@ class NFOMonitor(xbmc.Monitor):
             except KeyError:
                 # gracefully return
                 return
-            self.log.info('watched status updated => launching ExportWatchedTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
-            self.add_task(ExportWatchedTask(data_dict['item']['type'], data_dict['item']['id']))
+            self.log.info('watched status updated => launching ExportSingleTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
+            self.add_task(ExportSingleTask(data_dict['item']['type'], data_dict['item']['id']))
