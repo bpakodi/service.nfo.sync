@@ -28,11 +28,11 @@ for elt in root.find_all('actor'):
     if (elt.find('name') and elt.find('name').string == 'Jean-Claude Van Damme'): # 'name' is a reserved member in BeautifulSoup, so we must use elt.find('name') instead of elt.name
         tags.add('favorite actors: Jean-Claude Van Damme')
 
-# check for tag 'video: 4k'
+# check for tag 'video: UltraHD / 4k'
 for elt in root.find_all('video'): # we probably have only one 'video' node, but just in case we loop through all of them
     try:
         if (elt.height and int(elt.height.string) == 2160):
-            tag_labels.add('video: 4k')
+            tag_labels.add('video: UltraHD / 4k')
     except ValueError: # conversion to int failed
         continue
 

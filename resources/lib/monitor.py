@@ -11,7 +11,7 @@ from resources.lib.tasks import Thread
 
 # import various tasks
 from resources.lib.tasks.import_all import ImportAllTask
-from resources.lib.tasks.export_single import ExportSingleTask
+from resources.lib.tasks.export_base import ExportSingleTask
 
 class NFOMonitor(xbmc.Monitor):
     def __init__(self, nb_threads = 2):
@@ -56,4 +56,4 @@ class NFOMonitor(xbmc.Monitor):
                 # gracefully return
                 return
             self.log.info('watched status updated => launching ExportSingleTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
-            self.add_task(ExportSingleTask(data_dict['item']['type'], data_dict['item']['id']))
+            self.add_task(ExportSingleTask(data_dict['item']['type'], data_dict['item']['id'], strategy = 'update')) # we will try to update the NFO, before (optionally) try to rebuild it

@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import xbmcvfs
 from resources.lib.tasks import TaskJSONRPCError
 from resources.lib.tasks.import_base import ImportTask, ImportTaskError
-from resources.lib.helpers import timestamp_to_str, str_to_timestamp
+from resources.lib.helpers import timestamp_to_str, str_to_timestamp, get_nfo_path
 
 class ImportAllTaskError(ImportTaskError):
     pass
@@ -22,14 +22,14 @@ class ImportAllTask(ImportTask):
             videos = self.get_list(properties = ['file'])
         except TaskJSONRPCError as e:
             raise ImportAllTaskError(str(e))
-        for video in videos:
+        for video_details in videos:
             # check every corresponding nfo file
-            self.inspect_nfo(video['file'], video)
+            self.inspect_nfo(video_details['file'], video_details)
 
     # inspect a nfo file to check if the corresponding video library entry should be refreshed
-    def inspect_nfo(self, video_file, video_data):
+    def inspect_nfo(self, video_file, video_details):
         # build .nfo file name from the video one
-        nfo_path = self.get_nfo_path(video_file)
+        nfo_path = get_nfo_path(video_file)
 
         if (not xbmcvfs.exists(nfo_path)):
             return
@@ -40,4 +40,4 @@ class ImportAllTask(ImportTask):
         if (last_modified > self.last_import):
             last_modified_str = timestamp_to_str(last_modified)
             # this entry is outdated, add it to the list for further processing (see run())
-            self.outdated.append(video_data)
+            self.outdated.append(video_details)

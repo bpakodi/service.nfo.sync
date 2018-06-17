@@ -19,9 +19,9 @@ class ImportSingleTask(ImportTask):
         self.log.debug('importing entry: %d' % self.video_id)
         # retrieve details of the given video entry, and add them to self.outdated
         try:
-            video = self.get_details(self.video_id, properties = ['file'])
-            self.outdated.append(video)
+            video_details = self.get_details(self.video_id, properties = ['file'])
+            self.outdated.append(video_details)
         except TaskJSONRPCError as e:
             self.log.error('invalid %s ID \'%s\'' % (self.video_type, str(self.video_id))
-            self.log.error(str(e))
+            self.log.error('Error was: %s' % str(e))
             raise ImportSingleTaskError('invalid %s ID \'%s\'' % (self.video_type, str(self.video_id))
