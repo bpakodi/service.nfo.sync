@@ -9,6 +9,7 @@ from resources.lib.helpers import addon_profile
 from resources.lib.helpers.log import Logger
 from resources.lib.helpers.exceptions import Error
 from resources.lib.helpers.jsonrpc import exec_jsonrpc, JSONRPCError, notify
+from resources.lib.script import FileScriptHandler, ScriptError
 
 
 # multithreading example: see https://forum.kodi.tv/showthread.php?tid=165223
@@ -77,17 +78,20 @@ class BaseTask(object):
         }
     }
 
-    def __init__(self, monitor, task_type, video_type):
+    def __init__(self, task_type, video_type):
         # create specific logger with namespace
         self.log = Logger(self.__class__.__name__)
         self.task_type = task_type
         self.video_type = video_type
-        self.monitor = monitor
         self.errors = set()
+
+    @property
+    def signature(self):
+        return '%s %s' % (self.video_type, self.task_type)
 
     # that is the method that is actually called from Thread.run()
     def _run(self):
-        self.log.debug('initializing %s %s' % (self.video_type, self.task_type))
+        self.log.debug('initializing %s' % self.signature)
         self.run()
 
     # main processing here, to be overriden
@@ -139,7 +143,7 @@ class BaseTask(object):
     # load data from file
     def load_file(self, path, dir = ''):
         full_path = os.path.join(dir, path) if dir else path
-        # check if the nfo file already exists
+        # check if the file already exists
         if (not xbmcvfs.exists(full_path)):
             raise TaskFileError(full_path, 'file does not exist')
         # open and read from it
@@ -185,50 +189,45 @@ class BaseTask(object):
         # check if the XML content is valid
         if (root is None):
             raise TaskFileError(nfo_path, 'invalid nfo file: no root tag \'%s\'' % root_tag)
-        # everything OK, return
-        return (soup, root)
+        # everything is OK, return
+        return (soup, root, raw)
 
     # save soup tag to nfo file (XML)
-    def save_nfo(self, nfo_path, root):
+    # if old_raw is set, perform a check, and do not save if identical
+    def save_nfo(self, nfo_path, root, old_raw = None):
+        # generate content
+        content = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        content = content + root.prettify_with_indent(encoding='utf-8')
+
+        # only save if content has been updated
+        # to perform that, we just compare string outputs. Dirty but acceptable, because strictly speaking XML is order-sensitive...
+        if (old_raw and old_raw == content):
+            self.log.debug('not saving to \'%s\': contents are identical' % nfo_path)
+            return
+
         try:
-            content = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
-            content = content + root.prettify_with_indent(encoding='utf-8')
+            self.log.debug('saving to \'%s\'' % nfo_path)
             self.save_file(nfo_path, content.decode('utf-8'))
         except TaskFileError:
             raise
         except Exception as e:
             raise TaskFileError(nfo_path, 'cannot save nfo file', e)
 
-    # execute a python script
+    # run external python script in a given context
     # args:
     #   locals_dict: locals, see exec documentation for help
-    def exec_script(self, soup, root, script_path, locals_dict = {}):
-        # preset the locals dict
-        _locals_dict = {
-              'soup': soup,
-              'root': root,
-              'log': self.log,
-        }
-        # apply additional locals from arguments
-        for k, v in locals_dict.iteritems():
-            _locals_dict[k] = v
-
-        # load the script file content
+    def exec_script_file(self, script_path, locals_dict = {}):
+        # initialize and execute the script
         try:
-            script_content = self.load_file(script_path)
-        except TaskFileError as e:
-            self.log.error('error loading script file: %s' % script_path)
-            self.log.error(str(e))
-            raise TaskScriptError(script_path, 'error loading script file: %s' % e.err_msg)
+            self.log.debug('initializing script: \'%s\'' % script_path)
+            script = FileScriptHandler(script_path, log_prefix = self.__class__.__name__)
+            self.log.debug('executing script: \'%s\'' % script_path)
+            script.execute(locals_dict = locals_dict)
+            self.log.debug('script executed: \'%s\'' % script_path)
+        except ScriptError as e:
+            raise TaskScriptError(script_path, str(e))
 
-        # execute the script content
-        try:
-            exec(script_content, {}, _locals_dict)
-            return True
-        except Exception as e:
-            self.log.error('error executing script: %s' % script_path)
-            self.log.error(str(e))
-            raise TaskScriptError(script_path, 'error executing script', e)
+
 
 # A dummy task, useful for testing
 class SleepTask(BaseTask):

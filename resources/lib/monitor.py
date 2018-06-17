@@ -46,7 +46,7 @@ class NFOMonitor(xbmc.Monitor):
         data_dict = json.loads(data)
         if (method == 'VideoLibrary.OnScanFinished'):
             self.log.info('library scan finished => launching ImportTask')
-            self.add_task(ImportTask(self, 'movie'))
+            self.add_task(ImportTask('movie'))
         elif (method == 'VideoLibrary.OnUpdate' and 'playcount' in data):
             # perform additional checks
             try:
@@ -56,4 +56,4 @@ class NFOMonitor(xbmc.Monitor):
                 # gracefully return
                 return
             self.log.info('watched status updated => launching ExportWatchedTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
-            self.add_task(ExportWatchedTask(self, data_dict['item']['type'], data_dict['item']['id']))
+            self.add_task(ExportWatchedTask(data_dict['item']['type'], data_dict['item']['id']))

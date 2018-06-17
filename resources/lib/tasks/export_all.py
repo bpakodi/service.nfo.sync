@@ -13,12 +13,12 @@ class ExportAllTask(ExportTask):
     TAGS = [ 'title', 'originaltitle', 'sorttitle', 'ratings', 'top250', 'outline', 'plot', 'tagline', 'runtime', 'thumb', 'fanart', 'mpaa', 'playcount', 'lastplayed', 'id', 'uniqueid', 'genre', 'country', 'set', 'tag', 'credits', 'director', 'premiered', 'year', 'studio', 'trailer', 'fileinfo', 'actor', 'resume', 'dateadded' ] # tags to be inserted in nfo (see https://kodi.wiki/view/NFO_files/Movies); they will be processed sequentially in export()
     EXCLUDED_TAGS = [ 'userrating', 'showlink' ] # userrating is added dynamically if settings is true (same as watched)
 
-    def __init__(self, monitor, video_type, video_id):
-        super(ExportAllTask, self).__init__(monitor, video_type, video_id)
+    def __init__(self, video_type, video_id):
+        super(ExportAllTask, self).__init__(video_type, video_id)
 
     @property
-    def task_label(self):
-        return '%s export (with rebuild)' % self.video_type
+    def signature(self):
+        return '%s export for \'%s\' (w/ rebuild)' % (self.video_type, self.title)
 
     # build a brand new nfo file
     def make_xml(self):
@@ -176,7 +176,7 @@ class ExportAllTask(ExportTask):
                     val = (u'%s' % self.details[tag_name])
                     elt.string = val
                     root.append(elt)
-            return (soup, root)
+            return (soup, root, '') # no old_raw, as we build from scratch
         except Exception as e:
             self.log.error('error building nfo file: \'%s\'' % e.path)
             self.log.error(str(e))
