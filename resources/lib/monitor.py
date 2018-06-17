@@ -10,8 +10,8 @@ from Queue import Queue
 from resources.lib.tasks import Thread
 
 # import various tasks
-from resources.lib.tasks.import_base import ImportTask
-from resources.lib.tasks.export_watched import ExportWatchedTask
+from resources.lib.tasks.import_all import ImportAllTask
+from resources.lib.tasks.export_single import ExportSingleTask
 
 class NFOMonitor(xbmc.Monitor):
     def __init__(self, nb_threads = 2):
@@ -45,8 +45,8 @@ class NFOMonitor(xbmc.Monitor):
         # self.log.debug('notification received: %s' % method)
         data_dict = json.loads(data)
         if (method == 'VideoLibrary.OnScanFinished'):
-            self.log.info('library scan finished => launching ImportTask')
-            self.add_task(ImportTask('movie'))
+            self.log.info('library scan finished => launching ImportAllTask')
+            self.add_task(ImportAllTask('movie'))
         elif (method == 'VideoLibrary.OnUpdate' and 'playcount' in data):
             # perform additional checks
             try:
@@ -55,5 +55,5 @@ class NFOMonitor(xbmc.Monitor):
             except KeyError:
                 # gracefully return
                 return
-            self.log.info('watched status updated => launching ExportWatchedTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
-            self.add_task(ExportWatchedTask(data_dict['item']['type'], data_dict['item']['id']))
+            self.log.info('watched status updated => launching ExportSingleTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
+            self.add_task(ExportSingleTask(data_dict['item']['type'], data_dict['item']['id']))
