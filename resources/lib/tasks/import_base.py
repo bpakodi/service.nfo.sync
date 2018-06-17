@@ -136,7 +136,7 @@ class ImportTask(BaseTask):
             self.log.notice('  => ignoring script error => proceeding with import anyway')
             raise ImportTaskScriptError('error loading script: \'%s\'' % script_path) # will not block run()
 
-        # loop through all the to-be-imported entries
+        # apply script to the "to-be-imported" entries
         for video_data in self.outdated:
             # load soup from nfo file
             try:
@@ -154,7 +154,11 @@ class ImportTask(BaseTask):
                 self.log.debug('executing script against nfo: %s' % nfo_path)
                 script.execute(locals_dict = {
                     'soup': soup,
-                    'root': root
+                    'root': root,
+                    'nfo_path': nfo_path,
+                    'video_path': video_file,
+                    'video_type': self.video_type,
+                    'video_title': video_data['label']
                 })
             except ScriptError as e:
                 self.errors.add(nfo_path)

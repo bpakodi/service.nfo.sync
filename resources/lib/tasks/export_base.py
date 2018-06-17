@@ -74,7 +74,7 @@ class ExportTask(BaseTask):
         try:
             self.save_nfo(self.nfo_path, root, old_raw)
         except TaskFileError as e:
-            self.log.error('error saving nfo file: \'%s\'' % e.path)
+            self.log.error('error saving nfo file: \'%s\'' % self.nfo_path)
             self.log.error(str(e))
             return False
 
@@ -106,7 +106,11 @@ class ExportTask(BaseTask):
         try:
             self.exec_script_file(script_path, locals_dict = {
                 'soup': soup,
-                'root': root
+                'root': root,
+                'nfo_path': self.nfo_path,
+                'video_path': self.details['file'],
+                'video_type': self.video_type,
+                'video_title': self.title
             })
         except TaskScriptError as e:
             self.log.notice('error applying script: \'%s\'' % script_path)
