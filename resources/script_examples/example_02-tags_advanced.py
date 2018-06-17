@@ -31,7 +31,7 @@ for filter, tag_label in file_filters.iteritems():
     if (re.search(filter, nfo_file)):
         tag_labels.add(tag_label)
 
-# remove all existing <tag> nodes
+# remove all existing <tag> nodes from root
 for elt in root.find_all('tag', recursive=False):
     elt.decompose()
 
@@ -41,13 +41,3 @@ for tag_label in tag_labels:
     elt.string = tag_label # set its string content
     root.append(elt) # add the node to root children
 log.debug('added tags to nfo: %s' % str(list(tag_labels)))
-
-# correct titles with wrong html entities
-error_html_entities = False
-for elt in root.find_all(['title', 'originaltitle', 'sorttitle']):
-    if (elt.string.find('&apos;') > -1 or elt.string.find('&amp;') > -1):
-        elt.string = elt.string.replace('&apos;', '\'')
-        elt.string = elt.string.replace('&amp;', '&')
-        error_html_entities = True
-if (error_html_entities):
-    log.info('script: correcting titles')

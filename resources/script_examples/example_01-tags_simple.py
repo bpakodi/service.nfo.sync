@@ -43,7 +43,7 @@ for elt in root.find_all('top250'): # we probably have only one 'top250' node, b
     except ValueError: # conversion to int failed
         continue
 
-# remove all existing <tag> nodes
+# remove all existing <tag> nodes from root
 for elt in root.find_all('tag', recursive=False):
     elt.decompose()
 
