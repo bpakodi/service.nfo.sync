@@ -10,7 +10,7 @@ from Queue import Queue
 from resources.lib.tasks import Thread
 
 # import various tasks
-from resources.lib.tasks.import_base import ImportTask
+from resources.lib.tasks.import_all import ImportAllTask
 from resources.lib.tasks.export_single import ExportSingleTask
 
 class NFOMonitor(xbmc.Monitor):
@@ -45,8 +45,8 @@ class NFOMonitor(xbmc.Monitor):
         # self.log.debug('notification received: %s' % method)
         data_dict = json.loads(data)
         if (method == 'VideoLibrary.OnScanFinished'):
-            self.log.info('library scan finished => launching ImportTask')
-            self.add_task(ImportTask('movie'))
+            self.log.info('library scan finished => launching ImportAllTask')
+            self.add_task(ImportAllTask('movie'))
         elif (method == 'VideoLibrary.OnUpdate' and 'playcount' in data):
             # perform additional checks
             try:
