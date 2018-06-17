@@ -100,10 +100,6 @@ class BaseTask(object):
     def run(self):
         pass
 
-    # get the nfo file path, given the video one
-    def get_nfo_path(self, video_path):
-        return os.path.splitext(video_path)[0] + '.nfo'
-
     # get all entries from the library for the given video_type
     def get_list(self, **kwargs):
         try:
@@ -112,7 +108,7 @@ class BaseTask(object):
             return exec_jsonrpc(method, **kwargs)[result_key]
         except KeyError as e:
             self.log.error('cannot retrieve list of %ss: invalid key for BaseTask.JSONRPC_METHODS' % self.video_type)
-            self.log.error(str(e))
+            self.log.error('Error was: %s' % str(e))
             raise TaskJSONRPCError('cannot retrieve list of %ss: invalid key for BaseTask.JSONRPC_METHODS' % self.video_type)
         except JSONRPCError as e:
             self.log.error('Kodi JSON-RPC error: %s' % str(e))
@@ -131,7 +127,7 @@ class BaseTask(object):
             return exec_jsonrpc(method, **kwargs)[result_key]
         except KeyError as e:
             self.log.error('cannot retrieve details for %s #%d: invalid key for BaseTask.JSONRPC_METHODS' % (video_type, video_id))
-            self.log.error(str(e))
+            self.log.error('Error was: %s' % str(e))
             raise TaskJSONRPCError('cannot retrieve details for %s #%d: invalid key for BaseTask.JSONRPC_METHODS' % (video_type, video_id))
         except JSONRPCError as e:
             self.log.error('Kodi JSON-RPC error: %s' % str(e))
@@ -146,80 +142,6 @@ class BaseTask(object):
         if (notify_user):
             notify_str = msg + (('\n' + details) if (details) else '')
             notify(notify_str)
-
-    # helper methods: load / save to addon data location
-    # load data from file
-    def load_file(self, path, dir = ''):
-        full_path = os.path.join(dir, path) if dir else path
-        # check if the file already exists
-        if (not xbmcvfs.exists(full_path)):
-            raise TaskFileError(full_path, 'file does not exist')
-        # open and read from it
-        try:
-            fp = xbmcvfs.File(full_path)
-            data = fp.read()
-            fp.close()
-            return data
-        except Exception as e:
-            raise TaskFileError(path, 'cannot load file', e)
-    # save data to file
-    def save_file(self, path, data, dir = ''):
-        full_path = os.path.join(dir, path) if dir else path
-        # xbmcvfs will not truncate the file, if content is smaller than previously, so let's delete the file first
-        xbmcvfs.delete(full_path)
-        try:
-            fp = xbmcvfs.File(full_path, 'w')
-            result = fp.write(data.encode('utf-8'))
-            fp.close()
-        except Exception as e:
-            raise TaskFileError(path, 'cannot save file', e)
-
-        # it seems xbmcvfs does not raise any exception at all...
-        if (not result):
-            raise TaskFileError(path, 'cannot save file: unknown error')
-    # load data from data file
-    def load_data(self, path):
-        return self.load_file(path, dir = addon_profile)
-    # save data to data file
-    def save_data(self, path, data):
-        self.save_file(path, data, dir = addon_profile)
-    # load soup from nfo file (XML)
-    def load_nfo(self, nfo_path, root_tag):
-        # load raw data from file (may throw exceptions)
-        raw = self.load_file(nfo_path) # already contains the full path
-        # load XML tree from file content
-        try:
-            soup = BeautifulSoup(raw, 'html.parser')
-            root = soup.find(root_tag)
-        except Exception as e:
-            raise TaskFileError(nfo_path, 'invalid nfo file: not a valid XML document', e)
-
-        # check if the XML content is valid
-        if (root is None):
-            raise TaskFileError(nfo_path, 'invalid nfo file: no root tag \'%s\'' % root_tag)
-        # everything is OK, return
-        return (soup, root, raw)
-
-    # save soup tag to nfo file (XML)
-    # if old_raw is set, perform a check, and do not save if identical
-    def save_nfo(self, nfo_path, root, old_raw = None):
-        # generate content
-        content = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
-        content = content + root.prettify_with_indent(encoding='utf-8')
-
-        # only save if content has been updated
-        # to perform that, we just compare string outputs. Dirty but acceptable, because strictly speaking XML is order-sensitive...
-        if (old_raw and old_raw == content):
-            self.log.debug('not saving to \'%s\': contents are identical' % nfo_path)
-            return
-
-        try:
-            self.log.debug('saving to \'%s\'' % nfo_path)
-            self.save_file(nfo_path, content.decode('utf-8'))
-        except TaskFileError:
-            raise
-        except Exception as e:
-            raise TaskFileError(nfo_path, 'cannot save nfo file', e)
 
     # run external python script in a given context
     # args:
@@ -246,31 +168,3 @@ class SleepTask(BaseTask):
         self.log.debug('SleepTask: sleeping for %s s' % self.duration)
         xbmc.sleep(self.duration * 1000)
         self.log.debug('SleepTask: done sleeping for %s s' % self.duration)
-
-# Monkey-patch BeautifulSoup, to allow a nicer pretty print
-# see https://stackoverflow.com/questions/47879140/how-to-prettify-html-so-tag-attributes-will-remain-in-one-single-line
-# and https://code.i-harness.com/en/q/b70e4
-from bs4 import BeautifulSoup, Tag
-import re
-
-def prettify_with_indent(self, indent_width = 4, single_lines = True, encoding=None, formatter='minimal'):
-    # # compact attrs
-    # if single_lines:
-    #     for tag in self():
-    #         for attr in tag.attrs:
-    #             # print(tag.attrs[attr], tag.attrs[attr].__class__)
-    #             tag.attrs[attr] = " ".join(
-    #                 tag.attrs[attr].replace("\n", " ").split())
-    # get prettify() before applying modifications
-    output = self.prettify(encoding, formatter)
-    # compact nodes
-    if single_lines:
-        r = re.compile('>\n\s+([^<>\s].*?)\n\s+</', re.DOTALL)
-        output = r.sub('>\g<1></', output)
-
-    # set indentation
-    r = re.compile(r'^(\s*)', re.MULTILINE)
-    return r.sub(r'\1' * indent_width, output)
-
-BeautifulSoup.prettify_with_indent = prettify_with_indent
-Tag.prettify_with_indent = prettify_with_indent

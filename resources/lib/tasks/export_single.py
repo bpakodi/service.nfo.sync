@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 import xbmcvfs
-from bs4 import BeautifulSoup
-from resources.lib.helpers import addon
+from resources.lib.helpers import addon, load_nfo
 from resources.lib.tasks import TaskScriptError, TaskFileError
 from resources.lib.tasks.export_base import ExportTask, ExportTaskError, ExportTaskXMLError
 
@@ -19,7 +18,7 @@ class ExportSingleTask(ExportTask):
     def make_xml(self):
         try:
             # load soup from file
-            (soup, root, old_raw) = self.load_nfo(self.nfo_path, self.video_type)
+            (soup, root, old_raw) = load_nfo(self.nfo_path, self.video_type)
             # update XML tree
             for tag_name in self.tags:
                 # get the child element
@@ -41,7 +40,7 @@ class ExportSingleTask(ExportTask):
         # fallback to ExportAllTask, in order to regenerate the file completely
         # first check if correct setting is activated
         if (addon.getSettingBool('movies.export.rebuild')):
-            self.log.notice('  => regenerating nfo file: \'%s\'' % self.nfo_path)
+            self.log.notice('  => rebuilding nfo file: \'%s\'' % self.nfo_path)
             # instance a ExportAllTask object, and directly execute its run() method
             from resources.lib.tasks.export_all import ExportAllTask
             self.log.notice('falling back to ExportAllTask')

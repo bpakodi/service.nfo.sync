@@ -3,7 +3,7 @@ import os.path
 import time
 import xbmc
 import xbmcvfs
-from resources.lib.helpers import addon, timestamp_to_str, str_to_timestamp
+from resources.lib.helpers import addon, timestamp_to_str, str_to_timestamp, get_nfo_path, load_data, save_data, load_nfo, save_nfo
 from resources.lib.tasks import BaseTask, TaskError, TaskFileError, TaskScriptError
 from resources.lib.helpers.jsonrpc import exec_jsonrpc, JSONRPCError
 from resources.lib.script import FileScriptHandler, ScriptError
@@ -19,7 +19,7 @@ class ImportTask(BaseTask):
         super(ImportTask, self).__init__('import', video_type)
         # try to get the last_import datetime either from arg, or the tmp file stored in addon data location; fallback to the Epoch
         try:
-            last_import_from_file = str_to_timestamp(self.load_data(self.LAST_IMPORT_FILE))
+            last_import_from_file = str_to_timestamp(load_data(self.LAST_IMPORT_FILE))
         except TaskFileError, Exception:
             last_import_from_file = 0
         self.last_import = last_import or last_import_from_file
@@ -80,7 +80,7 @@ class ImportTask(BaseTask):
             try:
                 self.log.debug('saving last_import to data file \'%s\'' % self.LAST_IMPORT_FILE)
                 # save this_run datetime to last_import.tmp
-                self.save_data(self.LAST_IMPORT_FILE, timestamp_to_str(self.this_run))
+                save_data(self.LAST_IMPORT_FILE, timestamp_to_str(self.this_run))
             except TaskFileError as e:
                 self.log.warning('error saving last_import datetime to data file \'%s\': %s' % (e.path, e))
                 self.log.warning('  => next import will probably process all your library again!')
@@ -113,21 +113,21 @@ class ImportTask(BaseTask):
             script = FileScriptHandler(script_path, log_prefix = self.__class__.__name__)
         except ScriptError as e:
             self.log.notice('error loading script file: \'%s\'' % script_path)
-            self.log.notice(str(e))
+            self.log.notice('Error was: %s' % str(e))
             self.log.notice('  => ignoring script error => proceeding with import anyway')
             raise ImportTaskScriptError('error loading script: \'%s\'' % script_path) # will not block run()
 
         # apply script to the "to-be-imported" entries
-        for video_data in self.outdated:
+        for video_details in self.outdated:
             # load soup from nfo file
             try:
-                video_file = video_data['file']
-                nfo_path = self.get_nfo_path(video_file)
-                (soup, root, old_raw) = self.load_nfo(nfo_path, self.video_type)
+                video_file = video_details['file']
+                nfo_path = get_nfo_path(video_file)
+                (soup, root, old_raw) = load_nfo(nfo_path, self.video_type)
             except TaskFileError as e:
                 self.errors.add(nfo_path)
                 self.log.error('error loading nfo file: %s' % nfo_path)
-                self.log.error(str(e))
+                self.log.error('Error was: %s' % str(e))
                 continue
 
             # apply script on XML
@@ -139,7 +139,7 @@ class ImportTask(BaseTask):
                     'nfo_path': nfo_path,
                     'video_path': video_file,
                     'video_type': self.video_type,
-                    'video_title': video_data['label'],
+                    'video_title': video_details['label'],
                     'task_family': self.task_family,
                 })
             except ScriptError as e:
@@ -151,7 +151,10 @@ class ImportTask(BaseTask):
 
             # write content to NFO file
             try:
-                self.save_nfo(nfo_path, root, old_raw)
+                if (save_nfo(nfo_path, root, old_raw)):
+                    self.log.debug('nfo saved to \'%s\'' % nfo_path)
+                else:
+                    self.log.debug('not saving to \'%s\': contents are identical' % nfo_path)
             except TaskFileError as e:
                 self.log.error('error saving nfo file: \'%s\'' % nfo_path)
                 self.log.error(str(e))
@@ -160,14 +163,14 @@ class ImportTask(BaseTask):
     # refresh outdated video library entries
     # note: Kodi will actually perform delete + add operations, which will result in a new entry id in the lib
     def refresh_outdated(self):
-        for video_data in self.outdated:
+        for video_details in self.outdated:
             try:
-                video_file = video_data['file']
-                self.log.debug('refreshing %s: %s (%d)' % (self.video_type, video_data['label'], video_data['movieid']))
-                result = exec_jsonrpc('VideoLibrary.RefreshMovie', movieid=video_data['movieid'], ignorenfo=False)
+                video_file = video_details['file']
+                self.log.debug('refreshing %s: %s (%d)' % (self.video_type, video_details['label'], video_details['movieid']))
+                result = exec_jsonrpc('VideoLibrary.RefreshMovie', movieid=video_details['movieid'], ignorenfo=False)
                 if (result != 'OK'):
                     self.errors.add(video_file)
-                    self.log.warning('%s refresh failed for \'%s\' (%d)' % (self.video_type, video_data['file'], video_data['movieid']))
+                    self.log.warning('%s refresh failed for \'%s\' (%d)' % (self.video_type, video_details['file'], video_details['movieid']))
             except JSONRPCError as e:
                 self.log.error('' + str(e))
                 self.errors.add('JSON-RPC error')

@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import xbmcvfs
 from resources.lib.helpers.exceptions import Error
 from resources.lib.helpers.log import Logger
