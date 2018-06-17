@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import xbmcvfs
+from resources.lib.tasks import TaskJSONRPCError
 from resources.lib.tasks.import_base import ImportTask, ImportTaskError
 from resources.lib.helpers import timestamp_to_str, str_to_timestamp
 
@@ -20,7 +21,7 @@ class ImportSingleTask(ImportTask):
         try:
             video = self.get_details(self.video_id, properties = ['file'])
             self.outdated.append(video)
-        except TaskError as e:
+        except TaskJSONRPCError as e:
             self.log.error('invalid %s ID \'%s\'' % (self.video_type, str(self.video_id))
             self.log.error(str(e))
             raise ImportSingleTaskError('invalid %s ID \'%s\'' % (self.video_type, str(self.video_id))

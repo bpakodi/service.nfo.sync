@@ -38,6 +38,8 @@ class Thread(BaseThread):
 
 class TaskError(Error):
     pass
+class TaskJSONRPCError(TaskError):
+    pass
 # base class for task exceptions with a path
 class TaskPathError(TaskError):
     def __init__(self, path, err_msg, ex = None):
@@ -109,9 +111,12 @@ class BaseTask(object):
             result_key = self.JSONRPC_METHODS[self.video_type]['list']['result_key']
             return exec_jsonrpc(method, **kwargs)[result_key]
         except KeyError as e:
-            raise TaskError('cannot retrieve list of %ss: invalid key for BaseTask.JSONRPC_METHODS: %s' % (self.video_type, str(e)))
-        except JSONRPCError as e:
+            self.log.error('cannot retrieve list of %ss: invalid key for BaseTask.JSONRPC_METHODS' % self.video_type)
             self.log.error(str(e))
+            raise TaskJSONRPCError('cannot retrieve list of %ss: invalid key for BaseTask.JSONRPC_METHODS' % self.video_type))
+        except JSONRPCError as e:
+            self.log.error('Kodi JSON-RPC error: %s' % str(e))
+            raise TaskJSONRPCError('Kodi JSON-RPC error: %s' % str(e)))
 
     # get details for a given library entry
     def get_details(self, video_id, video_type = None, **kwargs):
@@ -125,9 +130,12 @@ class BaseTask(object):
             # perform the JSON-RPC call
             return exec_jsonrpc(method, **kwargs)[result_key]
         except KeyError as e:
-            raise TaskError('cannot retrieve details for %s #%d: invalid key for BaseTask.JSONRPC_METHODS: %s' % (video_type, video_id, str(e)))
-        except JSONRPCError as e:
+            self.log.error('cannot retrieve details for %s #%d: invalid key for BaseTask.JSONRPC_METHODS' % (video_type, video_id))
             self.log.error(str(e))
+            raise TaskJSONRPCError('cannot retrieve details for %s #%d: invalid key for BaseTask.JSONRPC_METHODS' % (video_type, video_id))
+        except JSONRPCError as e:
+            self.log.error('Kodi JSON-RPC error: %s' % str(e))
+            raise TaskJSONRPCError('Kodi JSON-RPC error: %s' % str(e)))
 
     # log (and optionally visually notify) the results on task completion
     def notify(self, msg, details = '', notify_user = False):

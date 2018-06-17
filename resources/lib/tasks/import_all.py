@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import xbmcvfs
+from resources.lib.tasks import TaskJSONRPCError
 from resources.lib.tasks.import_base import ImportTask, ImportTaskError
 from resources.lib.helpers import timestamp_to_str, str_to_timestamp
 
@@ -17,8 +18,10 @@ class ImportAllTask(ImportTask):
         # following this approach, all nfo that are not associated with an entry in the library can be gracefully ignored (they are probably falsy)
         self.log.debug('scanning library for nfo files newer than %s' % timestamp_to_str(self.last_import))
         # retrieve all video entries in the library
-        videos = self.get_list(properties = ['file'])
-        # TODO: handle errors / bad content. Also, what is the behaviour when library is empty?
+        try:
+            videos = self.get_list(properties = ['file'])
+        except TaskJSONRPCError as e:
+            raise ImportAllTaskError(str(e))
         for video in videos:
             # check every corresponding nfo file
             self.inspect_nfo(video['file'], video)

@@ -32,8 +32,13 @@ class ImportTask(BaseTask):
         result_status = '%s import complete' % self.video_type
         result_details = ''
         script_error = False
-        # scan the whole library, to find entries with newer nfo files
-        self.scan_outdated()
+
+        # collect entries that should be re-imported
+        try:
+            self.scan_outdated()
+        except ImportTaskError as e:
+            self.log.error('errors detected => aborting task')
+            return False
 
         # process outdated entries (if any)
         if (len(self.outdated) > 0):
@@ -56,7 +61,7 @@ class ImportTask(BaseTask):
                     self.log.info('automatically cleaning the library...')
                     exec_jsonrpc('VideoLibrary.Clean')
                 except JSONRPCError as e:
-                    # just log on error
+                    # just log the error
                     self.log.warning('error cleaning the library: %s' % str(e))
         else:
             result_details = 'nothing to import'
@@ -86,6 +91,7 @@ class ImportTask(BaseTask):
 
         # log and notify user
         self.notify(result_status, result_details, addon.getSettingBool('movies.auto.notify'))
+        return True
 
     # to be overridden
     # set the list of entries that should be imported again
