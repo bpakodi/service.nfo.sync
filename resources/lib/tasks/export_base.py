@@ -97,8 +97,8 @@ class ExportTask(BaseTask):
     # run external script to modify the XML content, if applicable
     def patch_xml(self, soup, root):
         # check in settings if we should run a script
-        script_path = xbmc.translatePath(addon.getSetting('movies.export.script.path'))
-        if (not addon.getSettingBool('movies.export.script') or not script_path):
+        script_path = xbmc.translatePath(addon.getSetting('movies.general.script.path'))
+        if (not addon.getSettingBool('movies.general.script') or not script_path):
             self.log.debug('not applying any script')
             return
 
@@ -110,7 +110,8 @@ class ExportTask(BaseTask):
                 'nfo_path': self.nfo_path,
                 'video_path': self.details['file'],
                 'video_type': self.video_type,
-                'video_title': self.title
+                'video_title': self.title,
+                'task_family': self.task_family,
             })
         except TaskScriptError as e:
             self.log.notice('error applying script: \'%s\'' % script_path)

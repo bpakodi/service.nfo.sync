@@ -78,16 +78,16 @@ class BaseTask(object):
         }
     }
 
-    def __init__(self, task_type, video_type):
+    def __init__(self, task_family, video_type):
         # create specific logger with namespace
         self.log = Logger(self.__class__.__name__)
-        self.task_type = task_type
+        self.task_family = task_family
         self.video_type = video_type
         self.errors = set()
 
     @property
     def signature(self):
-        return '%s %s' % (self.video_type, self.task_type)
+        return '%s %s' % (self.video_type, self.task_family)
 
     # that is the method that is actually called from Thread.run()
     def _run(self):

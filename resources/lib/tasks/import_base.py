@@ -120,8 +120,8 @@ class ImportTask(BaseTask):
     # run external script to modify the XML content, if applicable
     def apply_script(self):
         # check in settings if we should run a script
-        script_path = xbmc.translatePath(addon.getSetting('movies.import.script.path'))
-        if (not addon.getSettingBool('movies.import.script') or not script_path):
+        script_path = xbmc.translatePath(addon.getSetting('movies.general.script.path'))
+        if (not addon.getSettingBool('movies.general.script') or not script_path):
             self.log.debug('not applying any script on imported nfo files')
             return
         self.log.debug('applying following script on imported nfo files: %s' % script_path)
@@ -158,7 +158,8 @@ class ImportTask(BaseTask):
                     'nfo_path': nfo_path,
                     'video_path': video_file,
                     'video_type': self.video_type,
-                    'video_title': video_data['label']
+                    'video_title': video_data['label'],
+                    'task_family': self.task_family,
                 })
             except ScriptError as e:
                 self.errors.add(nfo_path)

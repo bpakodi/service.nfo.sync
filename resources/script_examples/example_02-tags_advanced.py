@@ -6,6 +6,7 @@
 #   video_path:  path of the video file
 #   video_type:  movie / tvshow, ...
 #   video_title: title of the movie / tvshow / ...
+#   task_family: 'import' or 'export'
 
 # import some standard modules
 import os.path
