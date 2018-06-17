@@ -3,7 +3,7 @@
     <category label="Movies">
         <setting label="Automation" type="lsep"/>
         <setting id="movies.auto.active" label="Activate automation" type="bool" default="true"/>
-        <setting id="movies.auto.notify" label="notify on completion" type="bool" default="true" subsetting="true" enable="eq(-3,true)"/>
+        <setting id="movies.auto.notify" label="notify on completion" type="bool" default="true" subsetting="true" enable="eq(-1,true)"/>
 
         <setting label="General tweaks" type="lsep"/>
         <setting id="movies.general.script" label="apply script to patch NFO:" type="bool" default="false" enable="eq(-3,true)"/>
