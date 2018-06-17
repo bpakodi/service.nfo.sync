@@ -20,23 +20,14 @@ class ExportTask(BaseTask):
         'rebuild': RebuildExportStrategy,
     }
 
-    def __init__(self, video_type, video_id, strategy = 'update'):
+    def __init__(self, video_type, strategy = 'update'):
         super(ExportTask, self).__init__('export', video_type)
-        self.video_id = video_id
         self.default_strategy = strategy
 
-    # useful for notifications and so
-    @property
-    def video_title(self):
-        try:
-            return self.video_details['label']
-        except:
-            return ''
-
-    # main task method, the task will get destroyed on exit
-    def run(self):
+    # process a single NFO file, given the video ID
+    def export_video(self, video_id):
         # first instanciate the default strategy; if it fails, try to fallback to another one
-        strategy = self.make_strategy(self.default_strategy, self.video_id)
+        strategy = self.make_strategy(self.default_strategy, video_id)
         while (strategy):
             try:
                 # patch or build the XML content, using strategy.make_xml()
@@ -146,3 +137,13 @@ class ExportTask(BaseTask):
             self.log.notice(str(e))
             self.log.notice('  => ignoring script error => proceeding with export anyway')
             raise ExportTaskScriptError('script error: %s' % str(e))
+
+# task class for exporting a single video entry to nfo file
+class ExportSingleTask(ExportTask):
+    def __init__(self, video_type, video_id, strategy = 'update'):
+        super(ExportSingleTask, self).__init__(video_type, strategy)
+        self.video_id = video_id
+
+    # main task method, the task will get destroyed on exit
+    def run(self):
+        return self.export_video(self.video_id)
