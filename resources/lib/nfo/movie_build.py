@@ -59,7 +59,7 @@ class MovieNFOBuildHandler(NFOBuildHandler):
                 self.add_tag(tag_name, label)
         elif (tag_name == 'set'):
             if (int(self.entry['setid']) == 0):
-                continue
+                return
             # here we need to grab some data
             set_details = Library.get_details(self.entry['setid'], 'set', properties = ['title', 'plot']) # overload self.video_type to execute this specific query
             elt = self.soup.new_tag('set')

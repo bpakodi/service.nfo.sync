@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 import xbmc
 from resources.lib.helpers.log import log
 from resources.lib.monitor import NFOMonitor
-from resources.lib.tasks import SleepTask
 
 if __name__ == '__main__':
     monitor = NFOMonitor()

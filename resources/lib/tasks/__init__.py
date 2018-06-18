@@ -5,7 +5,7 @@ import os.path
 import xbmc
 import xbmcvfs
 
-from resources.lib.helpers import plural, Error
+from resources.lib.helpers import addon, plural, Error
 from resources.lib.helpers.log import Logger
 from resources.lib.helpers.jsonrpc import notify
 import resources.lib.library as Library
@@ -56,6 +56,7 @@ class TaskResult(object):
         self.errors = []
         self.warnings = []
         self.script_errors = False # tracked globally, not in errors
+        self.built = False
 
     @property
     def nb_modified(self):
@@ -72,11 +73,14 @@ class TaskResult(object):
 
     # build the title and lines depending on results
     def build(self):
-        if (self.nb_items == 0):
-            self.lines = [ 'nothing to process' ]
-            return self.status
+        self.built = True
         if (self.status != 'complete'):
-            return self.status
+            self.title = self.status
+            return
+        if (self.nb_items == 0):
+            self.title = 'complete'
+            self.lines = [ 'nothing to process' ]
+            return
 
         if (self.nb_items == 1 and self.nb_errors > 0):
                 # we consider status failed
@@ -86,7 +90,7 @@ class TaskResult(object):
 
         # process errors
         nfo_tokens = [ '%s modified' % plural('NFO') ]
-        if (self.nb_errors) > 0):
+        if (self.nb_errors > 0):
             nfo_tokens.append('%s' % plural('error', self.nb_errors))
         self.lines.append(', '.join(nfo_tokens))
 
@@ -135,6 +139,9 @@ class BaseTask(object):
     # main processing here, could be called directly
     def run(self):
         result = self.process() # result is a TaskResult object
+        if (not result.built):
+            # build result if it was sent early
+            result.build()
 
         self.notify_result(result, notify_user = addon.getSettingBool('movies.auto.notify'))
 
@@ -143,6 +150,8 @@ class BaseTask(object):
         try:
             self.populate_entries()
         except TaskError as e:
+            self.log.error(e)
+            e.dump(self.log.error)
             self.log.error('error populating entries => aborting task')
             return TaskResult('aborted', 'cannot populate entries, see logs')
 
@@ -216,7 +225,7 @@ class BaseTask(object):
     def load_script(self):
         script_path = xbmc.translatePath(addon.getSetting('movies.general.script.path'))
         if (not addon.getSettingBool('movies.general.script') or not script_path):
-            self.log.debug('not applying any script on nfo files')
+            self.log.debug('not applying any script on nfo')
             return None
         else:
             self.log.debug('loading script: %s' % script_path)
@@ -276,13 +285,14 @@ class BaseTask(object):
     def notify_result(self, result, notify_user = False):
         # process log
         if (result.lines):
-            log_str = '%s: %s' % (title, ' / '.join(result.lines))
+            log_str = '%s: %s' % (result.title, ' / '.join(result.lines))
         else:
-            log_str = title
-        self.log.log(log_str, xbmc.LOGERROR if (result.nb_errors) else xbmc.LOGINFO)
+            log_str = result.title
+
+        self.log.log(log_str, xbmc.LOGERROR if (result.nb_errors or result.status != 'complete') else xbmc.LOGINFO)
         # optionally notify user
         if (notify_user):
-            notify('\n'.join(result.lines), title)
+            notify('\n'.join(result.lines), result.title)
 
     # run external python script in a given context
     # args:

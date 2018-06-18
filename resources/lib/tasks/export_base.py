@@ -16,11 +16,6 @@ class ExportTaskScriptError(ExportTaskError, TaskScriptError):
 
 # base task for exporting a single video entry to nfo file
 class ExportTask(BaseTask):
-    HANDLERS = {
-        'update': UpdateExportStrategy,
-        'rebuild': RebuildExportStrategy,
-    }
-
     def __init__(self, video_type, ignore_script = False):
         super(ExportTask, self).__init__('export', video_type, ignore_script)
 

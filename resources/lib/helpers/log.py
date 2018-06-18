@@ -15,12 +15,12 @@ def _log(msg, level = xbmc.LOGDEBUG):
 class Logger(object):
     def __init__(self, ns = None):
         if (ns):
-            self.prefix = ns + ' / '
+            self.prefix = ns + ' > '
         else:
             self.prefix = ''
 
     def log(self, msg, level = xbmc.LOGDEBUG):
-        _log(self.prefix + msg, level)
+        _log(self.prefix + (str(msg) if isinstance(msg, Exception) else msg), level)
     def debug(self, msg):
         self.log(msg, xbmc.LOGDEBUG)
     def info(self, msg):

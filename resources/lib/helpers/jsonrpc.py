@@ -23,7 +23,7 @@ def exec_jsonrpc(method, id='unknown', **kwargs):
         command['params'] = kwargs
 
     # perfom the actual JSON-RPC call
-    log.debug('executing JSON-RPC call: %s' % method)
+    log.debug('JSON-RPC > executing: %s' % method)
     response = json.loads(xbmc.executeJSONRPC(json.dumps(command)))
 
     if response:
