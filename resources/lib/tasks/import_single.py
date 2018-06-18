@@ -13,6 +13,7 @@ class ImportSingleTask(ImportTask):
         if (not video_id):
             raise ImportSingleTaskError('empty %s ID' % self.video_type)
         self.video_id = video_id
+        self.save_resume_point = False # don't save resume point for a single entry
 
     # set the list of entries that should be imported again
     def scan_outdated(self):
@@ -22,6 +23,6 @@ class ImportSingleTask(ImportTask):
             video_details = self.get_details(self.video_id, properties = ['file'])
             self.outdated.append(video_details)
         except TaskJSONRPCError as e:
-            self.log.error('invalid %s ID \'%s\'' % (self.video_type, str(self.video_id))
+            self.log.error('invalid %s ID \'%s\'' % (self.video_type, str(self.video_id)))
             self.log.error('Error was: %s' % str(e))
-            raise ImportSingleTaskError('invalid %s ID \'%s\'' % (self.video_type, str(self.video_id))
+            raise ImportSingleTaskError('invalid %s ID \'%s\'' % (self.video_type, str(self.video_id)))
