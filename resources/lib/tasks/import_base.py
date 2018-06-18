@@ -29,7 +29,6 @@ class ImportTask(BaseTask):
             last_import_from_file = 0
         self.last_import = last_import or last_import_from_file
         self.this_run = time.time() # save run date of the current task, to override last_import on success
-        self.outdated = [] # list of nfo files that are candidates for refresh
         self.save_resume_point = True # save run timestamp if task is successful
 
     # main task method, the task will get destroyed on exit
@@ -38,16 +37,17 @@ class ImportTask(BaseTask):
         result_status = '%s import complete' % self.video_type
         result_details = ''
         script_error = False
+        nb_refreshed = 0
 
         # collect entries that should be re-imported
         try:
-            self.scan_outdated()
+            outdated = self.get_entries()
         except ImportTaskError as e:
             self.log.error('errors detected => aborting task')
             return False
 
         # early exit if nothing to process
-        if (len(self.outdated) == 0):
+        if (len(outdated) == 0):
             result_details = 'nothing to import'
             # log and notify user
             self.notify(result_status, result_details, addon.getSettingBool('movies.auto.notify'))
@@ -60,7 +60,7 @@ class ImportTask(BaseTask):
         if (not addon.getSettingBool('movies.general.script') or not script_path):
             self.log.debug('not applying any script on imported nfo files')
         else:
-            self.log.debug('applying following script on imported nfo files: %s' % script_path)
+            self.log.debug('we will apply the following script on imported nfo files: %s' % script_path)
             # try to load the file, to allow bypassing it if errors are encountered
             try:
                 self.log.debug('initializing script: %s' % script_path)
@@ -71,21 +71,21 @@ class ImportTask(BaseTask):
                 self.log.notice('  => ignoring script error => proceeding with import anyway')
                 script = None
 
-        # loop through all outdated entries
-        for video_details in self.outdated:
+        # loop through all outdated entries, to apply script and refresh
+        for video_details in outdated:
             try:
                 # optionally apply a script to each of these files
                 if (script and self.apply_script(script, video_details)):
                     # refresh entry if it was modified
                     self.refresh_video(video_details)
+                    nb_refreshed += 1
             except (ImportTaskFileError, ImportTaskJSONRPCError) as e:
                 self.errors.add([ video_details['file'], str(e) ])
             except ImportTaskScriptError:
                 script_error = True # tracked globally, not in errors
 
         # analyze results
-        nb_refreshed = len(self.outdated) - len(self.errors)
-        result_details = '%d refreshed' % (nb_refreshed)
+        result_details = ('%d refreshed' % (nb_refreshed)) if (nb_refreshed) else 'nothing to import'
 
         # optionally clean library
         if (addon.getSettingBool('movies.import.autoclean') and nb_refreshed > 0):
@@ -128,9 +128,9 @@ class ImportTask(BaseTask):
         return True
 
     # to be overridden
-    # set the list of entries that should be imported again
-    def scan_outdated(self):
-        pass
+    # get the list of entries that should be imported again
+    def get_entries(self):
+        return []
 
     # run external script to modify the XML content, if applicable
     # returns True only if no errors was encountered, AND the XML content has been modified
@@ -141,7 +141,6 @@ class ImportTask(BaseTask):
             nfo_path = get_nfo_path(video_file)
             (soup, root, old_raw) = load_nfo(nfo_path, self.video_type)
         except TaskFileError as e:
-            self.errors.add(nfo_path)
             self.log.error('error loading nfo file: %s' % nfo_path)
             self.log.error('Error was: %s' % str(e))
             raise ImportTaskFileError(str(e))
@@ -159,7 +158,6 @@ class ImportTask(BaseTask):
                 'task_family': self.task_family,
             })
         except ScriptError as e:
-            self.errors.add(nfo_path)
             self.log.notice('error executing script against nfo: %s' % nfo_path)
             self.log.error('Error was: %s' % str(e))
             self.log.notice('  => script error, current nfo will NOT be updated')
@@ -174,7 +172,6 @@ class ImportTask(BaseTask):
                 self.log.debug('not saving to \'%s\': contents are identical' % nfo_path)
             return modified
         except TaskFileError as e:
-            self.errors.add(nfo_path)
             self.log.error('error saving nfo file: \'%s\'' % nfo_path)
             self.log.error('Error was: %s' % str(e))
             raise ImportTaskFileError(str(e))
@@ -187,9 +184,8 @@ class ImportTask(BaseTask):
             self.log.debug('refreshing %s: %s (%d)' % (self.video_type, video_details['label'], video_details['movieid']))
             result = exec_jsonrpc('VideoLibrary.RefreshMovie', movieid=video_details['movieid'], ignorenfo=False)
             if (result != 'OK'):
-                self.errors.add(video_file)
                 self.log.warning('%s refresh failed for \'%s\' (%d)' % (self.video_type, video_details['file'], video_details['movieid']))
-                return False
+                raise ImportTaskJSONRPCError('%s refresh failed for \'%s\' (%d)' % (self.video_type, video_details['file'], video_details['movieid']))
             return True
         except JSONRPCError as e:
             self.log.error('error executing JSON-RPC query: \'%s\'' % 'VideoLibrary.RefreshMovie')

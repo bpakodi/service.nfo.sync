@@ -134,7 +134,7 @@ class ExportTask(BaseTask):
             })
         except TaskScriptError as e:
             self.log.notice('error applying script: \'%s\'' % script_path)
-            self.log.notice(str(e))
+            self.log.notice('Error was: %s' % str(e))
             self.log.notice('  => ignoring script error => proceeding with export anyway')
             raise ExportTaskScriptError('script error: %s' % str(e))
 
