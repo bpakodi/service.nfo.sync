@@ -15,7 +15,7 @@ def _log(msg, level = xbmc.LOGDEBUG):
 class Logger(object):
     def __init__(self, ns = None):
         if (ns):
-            self.prefix = ns + ': '
+            self.prefix = ns + ' / '
         else:
             self.prefix = ''
 

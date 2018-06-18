@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup, Tag
 import xbmc
 import xbmcaddon
 import xbmcvfs
-from resources.lib.helpers.exceptions import Error
 
 ### addon shortcuts
 addon = xbmcaddon.Addon()
@@ -14,9 +13,24 @@ addon_name = addon.getAddonInfo('name')
 addon_id = addon.getAddonInfo('id')
 addon_profile = xbmc.translatePath(addon.getAddonInfo('profile')).decode("utf-8")
 
-#########################################
-### helper methods: timestamp-related ###
-#########################################
+
+##############################
+### base exception classes ###
+##############################
+class Error(Exception):
+    def __init__(self, message, ex = None):
+        super(Error, self).__init__(message)
+        self.message = message
+        self.ex = ex
+
+    # typically used to log exception messages
+    def dump(self, log_fct, details_prefix = '  >> '):
+        if (log_fct and self.ex):
+            log_fct(details_prefix + '%s: %s' % (self.ex.__class__.__name__, self.ex))
+
+######################
+### helper methods ###
+######################
 def timestamp_to_str(timestamp):
     try:
         return datetime.fromtimestamp(float(timestamp)).strftime('%Y-%m-%d %H:%M:%S')
@@ -39,6 +53,9 @@ def str_to_timestamp(date_string):
     except ValueError:
         # return gracefully if string is not valid
         return 0
+
+def plural(word, value):
+    return '%d %s%s' % (value, word, 's' if (value > 1) else '')
 
 ##########################################################
 ### helper methods: load / save to addon data location ###
@@ -103,11 +120,11 @@ def load_nfo(nfo_path, root_tag):
         soup = BeautifulSoup(raw, 'html.parser')
         root = soup.find(root_tag)
     except Exception as e:
-        raise TaskFileError(nfo_path, 'invalid nfo file: not a valid XML document', e)
+        raise FileError(nfo_path, 'invalid nfo file: not a valid XML document', e)
 
     # check if the XML content is valid
     if (root is None):
-        raise TaskFileError(nfo_path, 'invalid nfo file: no root tag \'%s\'' % root_tag)
+        raise FileError(nfo_path, 'invalid nfo file: no root tag \'%s\'' % root_tag)
     # everything is OK, return
     return (soup, root, raw)
 
@@ -127,10 +144,10 @@ def save_nfo(nfo_path, root, old_raw = None):
     try:
         save_file(nfo_path, content)
         return True
-    except TaskFileError:
+    except FileError:
         raise
     except Exception as e:
-        raise TaskFileError(nfo_path, 'cannot save nfo file', e)
+        raise FileError(nfo_path, 'cannot save nfo file', e)
 
 ##########################################################
 ### Monkey-patch BeautifulSoup with nicer pretty print ###
