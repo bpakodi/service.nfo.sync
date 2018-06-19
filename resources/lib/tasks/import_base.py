@@ -51,7 +51,7 @@ class ImportTask(BaseTask):
 
     # called when process completed; typically used for setting the result
     # returns: TaskResult object
-    def on_process_completed(self, result):
+    def on_process_finished(self, result):
         # optionally clean library
         if (addon.getSettingBool('movies.import.autoclean') and result.nb_modified > 0):
             try:

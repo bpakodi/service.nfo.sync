@@ -154,6 +154,8 @@ class BaseTask(object):
         result = self.process() # result is a TaskResult object
         # build result to have proper title and lines
         result.build(self.task_family)
+        # allow post-process actions
+        self.on_process_finished(result)
         # log and optionally notify user
         self.notify_result(result, notify_user = addon.getSettingBool('movies.auto.notify'))
 
@@ -301,7 +303,7 @@ class BaseTask(object):
     # to be overridden
     # called when process completed; typically used for last actions or tweaking the result
     # returns: TaskResult object
-    def on_process_completed(self, result):
+    def on_process_finished(self, result):
         pass
 
     # log (and optionally visually notify) the results on task completion
