@@ -42,9 +42,7 @@ def str_to_timestamp(date_string):
         try:
             return time.mktime(datetime.strptime(date_string, '%Y-%m-%d %H:%M:%S'))
         except TypeError:
-            # return datetime(*(time.strptime(date_string, '%Y-%m-%d %H:%M:%S')[0:6]))
             return time.mktime(time.strptime(date_string, '%Y-%m-%d %H:%M:%S'))
-            # return time.mktime(datetime.strptime(date_string, '%Y-%m-%d %H:%M:%S').date().timetuple())
     except ValueError:
         # return gracefully if string is not valid
         return 0

@@ -18,7 +18,7 @@ class ImportAllTask(ImportTask):
         # we start by getting the list of all referenced videos of the given video_type
         # this is acceptable, because this task will be triggered AFTER library scans, which means that new nfo files are already integrated in the library
         # following this approach, all nfo that are not associated with an entry in the library can be gracefully ignored (they are probably falsy)
-        self.log.debug('scanning library for nfo files newer than %s' % timestamp_to_str(self.last_import))
+        self.log.info('scanning library for nfo files newer than %s' % timestamp_to_str(self.last_import))
         # retrieve all video entries in the library
         self.items = []
         try:

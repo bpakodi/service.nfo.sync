@@ -1,33 +1,43 @@
 # service.nfo.sync Kodi addon
 
-***warning: still in alpha version, use at your own risk!***
 
+**[Please check the project wiki for more information and advanced configuration](https://github.com/bpakodi/service.nfo.sync/wiki)**
+
+**Current version: v0.0.2 (2018-06-19):**
+  >**warning: still in alpha version, use at your own risk!**
+  >
+  >What's new:
+  > * User-defined python scripts
+  > * Far better logging and error catching
+  > * Complete reorganization of classes
 
 ## Overview
-Keeps Kodi's video library and .nfo files closely synchronized, by enriching the way Kodi manages these nfo files.
+Extend the way Kodi manages NFO files, with an automatic synchronization of your video library and NFOs altogether.
 
-This set of tools is intended for advanced Kodi users, with large libraries and / or multi-room configurations.
+Also summon some magic and apply tags dynamically to your video entries, thanks to user-defined scripts!
 
-It helps maintaining a standard / centralized / sustainable source of video metadata in multiple .nfo files, as well as keeping Kodi instances updated all along.
+## Main functionalities
+ * service: automated processes running in background, triggered by Kodi events
+ * import: refresh Kodi entries automatically, when a NFO is updated
+ * export: update the NFO automatically, when an entry is modified (watched status only for the moment)
+ * custom scripts: fully customize the content of your NFOs, using a simple Python syntax
 
-If you are not confident with scrapers and .nfo file processing in Kodi, this addon is probably not meant for you...
+**Note:** only movies are covered for the moment... please be patient!
 
-Main functionalities:
- * import: refresh Kodi entries when a nfo is updated
- * export: update the nfo when an entry is modified (watched status)
- * automate behavior by catching the relevant Kodi events
- * apply user-defined scripts to modify NFO content on-the-fly very easily
-
-**Note:** only movies are covered for the moment... please be patient :-)
+## Disclaimer:
+  This set of tools is intended for advanced Kodi users, with large libraries and / or multi-room configurations.
+  If you are not confident with scrapers and .nfo file processing in Kodi, this addon is probably not meant for you...
 
 ## Configuration
-Set the **Local information only** scraper on all your movie media sources.
-Optionally, you may want to set the following settings in Kodi:
+ 1. Set the **Local information only** scraper on all your movie media sources
+ 2. Check the nfo sync configuration
+ 3. Launch a first library scan and start playing
+
+Optionally, you may also configure the following settings in Kodi:
  * *Update library on startup*:
    * Settings > Media > Library
  * *importwatchedstate* and *importresumepoint*:
    * see [Kodi wiki / advancedsettings.xml](https://kodi.wiki/view/Advancedsettings.xml#videolibrary) for details
-
 
 ## Compatibility
 Kodi 18 (Leia) only  
@@ -35,6 +45,5 @@ Kodi 18 (Leia) only
 ## Known limitations and roadmap
 Still a long way to go... some possible developments:
  * Integrate TV shows and music videos
- * Automatically set some tags depending on user-defined criteria: audio language, file location, ...
  * Make it compatible with Krypton?
  * Export resume point
