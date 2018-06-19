@@ -22,15 +22,15 @@ Also summon some magic and apply tags dynamically to your video entries, thanks 
  * export: update the NFO automatically, when an entry is modified (watched status only for the moment)
  * custom scripts: fully customize the content of your NFOs, using a simple Python syntax
 
-**Note:** only movies are covered for the moment... please be patient
+**Note:** only movies are covered for the moment... please be patient!
 
 ## Disclaimer:
- * This set of tools is intended for advanced Kodi users, with large libraries and / or multi-room configurations. If you are not confident with scrapers and .nfo file processing in Kodi, this addon is probably not meant for you...
- * It's still alpha version, you know, so use at your own risk!
+  This set of tools is intended for advanced Kodi users, with large libraries and / or multi-room configurations.
+  If you are not confident with scrapers and .nfo file processing in Kodi, this addon is probably not meant for you...
 
 ## Configuration
  1. Set the **Local information only** scraper on all your movie media sources
- 2. Check nfo sync configuration
+ 2. Check the nfo sync configuration
  3. Launch a first library scan and start playing
 
 Optionally, you may also configure the following settings in Kodi:
