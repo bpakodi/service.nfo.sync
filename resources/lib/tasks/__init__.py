@@ -83,6 +83,7 @@ class TaskResult(object):
         if (self.built):
             return
         self.built = True
+        self.title = '%s %s' % (task_family, self.status)
         if (self.status != 'complete'):
             self.title = self.status
             return
@@ -95,7 +96,7 @@ class TaskResult(object):
                 # we consider status failed
                 self.status = 'failed'
 
-        self.title = '%s %s: %s' % (task_family, self.status, plural('video', self.nb_items))
+        self.title = '%s: %s' % (self.title, plural('video', self.nb_items))
 
         # process errors
         nfo_tokens = [ '%s modified' % plural('NFO', self.nb_modified) ]
@@ -317,14 +318,14 @@ class BaseTask(object):
     def notify_result(self, result, notify_user = False):
         # process log
         if (result.lines):
-            log_str = '%s %s: %s' % (self.task_family, result.title, ' / '.join(result.lines))
+            log_str = '%s: %s' % (result.title, ' / '.join(result.lines))
         else:
             log_str = result.title
 
         self.log.log(log_str, xbmc.LOGERROR if (result.nb_errors or result.status != 'complete') else xbmc.LOGINFO)
         # optionally notify user
         if (notify_user):
-            notify('\n'.join(result.lines), self.task_family + ' ' + result.title)
+            notify('\n'.join(result.lines), result.title)
 
     # run external python script in a given context
     # args:
