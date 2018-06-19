@@ -35,8 +35,9 @@ class Thread(BaseThread):
             try:
                 # Don't block
                 task = self.tasks.get(block=False)
+                # task = self.tasks.get(block=True)
                 task._run_from_thread()
-                # del task
+                del task
                 self.tasks.task_done()
             except Empty:
                 # Allow other stuff to run
