@@ -52,7 +52,6 @@ class ImportTask(BaseTask):
             try:
                 self.log.debug('saving last_import to data file \'%s\'' % self.LAST_IMPORT_FILE)
                 # save this_run datetime to last_import.tmp
-                raise FileError(self.LAST_IMPORT_FILE, 'just debug, keep cool...')
                 save_data(self.LAST_IMPORT_FILE, timestamp_to_str(self.this_run))
             except FileError as e:
                 self.log.warning('error saving last_import datetime to data file \'%s\': %s' % (e.path, e))
