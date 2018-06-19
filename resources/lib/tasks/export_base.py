@@ -16,8 +16,8 @@ class ExportTaskScriptError(ExportTaskError, TaskScriptError):
 
 # base task for exporting a single video entry to nfo file
 class ExportTask(BaseTask):
-    def __init__(self, video_type, ignore_script = False):
-        super(ExportTask, self).__init__('export', video_type, ignore_script)
+    def __init__(self, video_type, ignore_script = False, silent = False):
+        super(ExportTask, self).__init__('export', video_type, ignore_script, silent)
 
     # called when nfo content has been loaded
     def on_nfo_loaded(self, nfo, result):

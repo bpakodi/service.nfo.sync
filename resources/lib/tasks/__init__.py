@@ -127,12 +127,13 @@ class TaskScriptError(TaskPathError):
 
 # Base class for tasks, to be derived for each video type: movies, tvshow, season, episode
 class BaseTask(object):
-    def __init__(self, task_family, video_type, ignore_script = False):
+    def __init__(self, task_family, video_type, ignore_script = False, silent = False):
         # create specific logger with namespace
         self.log = Logger(self.__class__.__name__)
         self.task_family = task_family
         self.video_type = video_type
         self.ignore_script = ignore_script
+        self.silent = silent
         # initialize some variables
         self.items = []
         self.script = None
@@ -324,7 +325,7 @@ class BaseTask(object):
 
         self.log.log(log_str, xbmc.LOGERROR if (result.nb_errors or result.status != 'complete') else xbmc.LOGINFO)
         # optionally notify user
-        if (notify_user):
+        if (notify_user and not self.silent):
             notify('\n'.join(result.lines), result.title)
 
     # run external python script in a given context

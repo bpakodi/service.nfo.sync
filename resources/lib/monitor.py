@@ -60,4 +60,4 @@ class NFOMonitor(xbmc.Monitor):
             self.add_task(ExportSingleTask(data_dict['item']['type'], data_dict['item']['id']))
         elif (method == 'VideoLibrary.OnUpdate' and 'added' in data_dict and data_dict['added'] == True):
             self.log.info('new entry added => we need to check if it needs refresh => launching ImportSingleTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
-            self.add_task(ImportSingleTask(data_dict['item']['type'], data_dict['item']['id']))
+            self.add_task(ImportSingleTask(data_dict['item']['type'], data_dict['item']['id'], silent = True))

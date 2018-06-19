@@ -20,8 +20,8 @@ class ImportTaskScriptError(ImportTaskError, TaskScriptError):
 class ImportTask(BaseTask):
     LAST_IMPORT_FILE = 'last_import.tmp'
 
-    def __init__(self, video_type, ignore_script = False, last_import = None):
-        super(ImportTask, self).__init__('import', video_type, ignore_script)
+    def __init__(self, video_type, ignore_script = False, silent = False, last_import = None):
+        super(ImportTask, self).__init__('import', video_type, ignore_script, silent)
         # try to get the last_import datetime either from arg, or the tmp file stored in addon data location; fallback to the Epoch
         try:
             last_import_from_file = str_to_timestamp(load_data(self.LAST_IMPORT_FILE))
