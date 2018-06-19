@@ -4,7 +4,7 @@ import time
 import xbmc
 import xbmcvfs
 
-from resources.lib.helpers import addon, timestamp_to_str, str_to_timestamp, load_data, save_data
+from resources.lib.helpers import addon, timestamp_to_str, str_to_timestamp, load_data, save_data, FileError
 from resources.lib.tasks import BaseTask, TaskError, TaskJSONRPCError, TaskFileError, TaskScriptError
 from resources.lib.helpers.jsonrpc import exec_jsonrpc, JSONRPCError
 
@@ -25,7 +25,7 @@ class ImportTask(BaseTask):
         # try to get the last_import datetime either from arg, or the tmp file stored in addon data location; fallback to the Epoch
         try:
             last_import_from_file = str_to_timestamp(load_data(self.LAST_IMPORT_FILE))
-        except TaskFileError, Exception:
+        except FileError, Exception:
             last_import_from_file = 0
         self.last_import = last_import or last_import_from_file
         self.this_run = time.time() # save run date of the current task, to override last_import on success
@@ -52,10 +52,11 @@ class ImportTask(BaseTask):
             try:
                 self.log.debug('saving last_import to data file \'%s\'' % self.LAST_IMPORT_FILE)
                 # save this_run datetime to last_import.tmp
+                raise FileError(self.LAST_IMPORT_FILE, 'just debug, keep cool...')
                 save_data(self.LAST_IMPORT_FILE, timestamp_to_str(self.this_run))
-            except TaskFileError as e:
+            except FileError as e:
                 self.log.warning('error saving last_import datetime to data file \'%s\': %s' % (e.path, e))
                 self.log.warning('  => next import will probably process the same videos again!')
-                result.lines.append('warning: cannot save import resume point')
+                result.warnings.append('cannot save import resume point')
         else:
                 self.log.debug('NOT saving last_import to data file \'%s\', as there were some errors' % self.LAST_IMPORT_FILE)

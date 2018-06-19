@@ -36,7 +36,7 @@ class Thread(BaseThread):
                 # Don't block
                 task = self.tasks.get(block=False)
                 task._run_from_thread()
-                del task
+                # del task
                 self.tasks.task_done()
             except Empty:
                 # Allow other stuff to run
@@ -317,13 +317,26 @@ class BaseTask(object):
 
     # log (and optionally visually notify) the results on task completion
     def notify_result(self, result, notify_user = False):
-        # process log
+        # build main log line
         if (result.lines):
             log_str = '%s: %s' % (result.title, ' / '.join(result.lines))
         else:
             log_str = result.title
 
-        self.log.log(log_str, xbmc.LOGERROR if (result.nb_errors or result.status != 'complete') else xbmc.LOGINFO)
+        # log title
+        log_level = xbmc.LOGERROR if (result.nb_errors or result.status != 'complete') else xbmc.LOGINFO
+        self.log.log(log_str, log_level)
+
+        # log errors and warnings
+        if (result.errors):
+            self.log.debug('Errors:')
+            for nfo_path, msg in result.errors:
+                self.log.debug('  >> %s: %s' % (nfo_path, msg))
+        if (result.warnings):
+            self.log.debug('Warnings:')
+            for msg in result.warnings:
+                self.log.debug('  >> %s' % msg)
+
         # optionally notify user
         if (notify_user and not self.silent):
             notify('\n'.join(result.lines), result.title)
