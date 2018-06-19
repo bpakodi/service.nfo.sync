@@ -29,7 +29,6 @@ class ImportAllTask(ImportTask):
         for entry in entries:
             # check the modification timestamp of each nfo file
             if (self.inspect_nfo(entry['file'])):
-                self.log.debug(entry['file'])
                 self.items.append(entry[self.video_type + 'id'])
 
     # inspect a nfo file to check if the corresponding video library entry should be refreshed

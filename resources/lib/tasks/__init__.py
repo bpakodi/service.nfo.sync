@@ -165,7 +165,6 @@ class BaseTask(object):
             self.populate_entries()
         except TaskError as e:
             self.log.error(e)
-            e.dump(self.log.error)
             self.log.error('error populating entries => aborting task')
             return TaskResult('aborted', 'cannot populate entries, see logs')
 
@@ -175,7 +174,6 @@ class BaseTask(object):
 
         # instantiate a TaskResult object
         result = TaskResult()
-        self.log.debug('instantiated result - lines = %s' % str(result.lines))
 
         # optionally load the script we will apply on all entries
         # we load the file now, in order to bypass it later if errors are encountered
@@ -184,7 +182,6 @@ class BaseTask(object):
                 self.script = self.load_script()
             except ScriptError as e:
                 self.log.notice(e)
-                e.dump(self.log.notice)
                 self.log.notice('  => ignoring script error => resuming task without script')
                 self.script = None
                 result.script_errors = True
@@ -205,10 +202,15 @@ class BaseTask(object):
                 except NFOHandlerError as e:
                     default_nfo = False # we will not use the default anymore
                     self.log.warning(e)
-                    e.dump(self.log.warning)
                     # try to fall back to another nfo handler
                     self.log.debug('  -> klass(nfo): %s' % nfo.__class__.__name__)
-                    nfo = self.on_nfo_load_failed(nfo, result)
+                    try:
+                        nfo = self.on_nfo_load_failed(nfo, result)
+                    except Exception as e:
+                        self.log.warning('error instantiating the fallback NFO handler')
+                        self.log.warning(e)
+                        self.log.warning('  => will not try further more => skipping this video')
+
                     self.log.debug('  -> klass(nfo): %s' % nfo.__class__.__name__)
                     if (not nfo):
                         result.add_error(nfo, e) # a dummy error will be added, as nfo == None raises an exception
@@ -220,25 +222,22 @@ class BaseTask(object):
 
             # apply script to nfo content
             if (self.script and not self.ignore_script):
-                if (not self.log.apply_script(nfo)):
+                if (not self.apply_script(nfo)):
                     result.script_errors = True # not tracked in result.errors
 
             # save nfo, and trigger event if content was actually modified
             try:
                 modified = nfo.save()
                 if (modified):
-                    self.log.info('saving nfo: \'%s\'' % nfo.nfo_path)
+                    self.log.info('saved nfo: \'%s\'' % nfo.nfo_path)
                     if (self.on_nfo_saved(nfo, result)):
                         result.modified.append(nfo.nfo_path) # add to processed only if saved
                 else:
                     self.log.debug('not saving to \'%s\': contents are identical' % nfo.nfo_path)
             except NFOHandlerError as e:
                 self.log.error(e)
-                e.dump(self.log.error)
                 result.add_error(nfo, e)
 
-        # build the result, to set title and lines; lines may be appended in event callback
-        self.log.debug('BaseTask.process() - end - result.lines = %s' % str(result.lines))
         result.status = 'complete'
         return result
 
@@ -276,7 +275,6 @@ class BaseTask(object):
             return True
         except ScriptError as e:
             self.log.warning('error executing script against nfo: %s' % nfo.nfo_path)
-            e.dump(self.log.warning)
             self.log.warning('  => script error, the nfo will NOT be updated')
             return False
 

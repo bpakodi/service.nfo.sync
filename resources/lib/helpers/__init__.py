@@ -23,11 +23,6 @@ class Error(Exception):
         self.message = message
         self.ex = ex
 
-    # typically used to log exception messages
-    def dump(self, log_fct, details_prefix = '  >> '):
-        if (log_fct and self.ex):
-            log_fct(details_prefix + '%s: %s' % (self.ex.__class__.__name__, self.ex))
-
 ######################
 ### helper methods ###
 ######################
