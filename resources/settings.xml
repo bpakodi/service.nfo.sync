@@ -27,5 +27,6 @@
     </category>
     <category label="Debug">
       <setting label="Update library" type="action" action="UpdateLibrary(video)"/>
+      <setting id="debug.nb_threads" label="Nb threads" type="slider" default="2" range="0,25" option="int" visible="false"/>
     </category>
 </settings>
