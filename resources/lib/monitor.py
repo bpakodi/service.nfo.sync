@@ -10,8 +10,9 @@ from Queue import Queue
 from resources.lib.tasks import Thread
 
 # import various tasks
-from resources.lib.tasks.import_base import ImportTask
-from resources.lib.tasks.export_watched import ExportWatchedTask
+from resources.lib.tasks.import_single import ImportSingleTask
+from resources.lib.tasks.import_all import ImportAllTask
+from resources.lib.tasks.export_base import ExportSingleTask
 
 class NFOMonitor(xbmc.Monitor):
     def __init__(self, nb_threads = 2):
@@ -45,9 +46,9 @@ class NFOMonitor(xbmc.Monitor):
         # self.log.debug('notification received: %s' % method)
         data_dict = json.loads(data)
         if (method == 'VideoLibrary.OnScanFinished'):
-            self.log.info('library scan finished => launching ImportTask')
-            self.add_task(ImportTask(self, 'movie'))
-        elif (method == 'VideoLibrary.OnUpdate' and 'playcount' in data):
+            self.log.info('library scan finished => launching ImportAllTask to check if there are modified NFOs')
+            self.add_task(ImportAllTask('movie'))
+        elif (method == 'VideoLibrary.OnUpdate' and 'playcount' in data_dict):
             # perform additional checks
             try:
                 if (data_dict['item']['type'] != 'movie' or not data_dict['item']['id']):
@@ -55,5 +56,8 @@ class NFOMonitor(xbmc.Monitor):
             except KeyError:
                 # gracefully return
                 return
-            self.log.info('watched status updated => launching ExportWatchedTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
-            self.add_task(ExportWatchedTask(self, data_dict['item']['type'], data_dict['item']['id']))
+            self.log.info('watched status updated => launching ExportSingleTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
+            self.add_task(ExportSingleTask(data_dict['item']['type'], data_dict['item']['id']))
+        elif (method == 'VideoLibrary.OnUpdate' and 'added' in data_dict and data_dict['added'] == True):
+            self.log.info('new entry added => we need to check if it needs refresh => launching ImportSingleTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
+            self.add_task(ImportSingleTask(data_dict['item']['type'], data_dict['item']['id'], silent = True))

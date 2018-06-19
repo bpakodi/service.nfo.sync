@@ -1,11 +1,16 @@
 from __future__ import unicode_literals
 import xbmc
+from resources.lib.helpers import addon
 from resources.lib.helpers.log import log
 from resources.lib.monitor import NFOMonitor
-from resources.lib.tasks import SleepTask
 
 if __name__ == '__main__':
-    monitor = NFOMonitor()
+
+    if (addon.getSettingInt('debug.nb_threads') == 0):
+        log.fatal('no thread at all??? Are you serious??? I cannot work this way, I quit')
+        exit()
+
+    monitor = NFOMonitor(nb_threads = addon.getSettingInt('debug.nb_threads'))
 
     log.notice('service started')
 

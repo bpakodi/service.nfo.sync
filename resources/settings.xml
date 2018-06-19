@@ -3,17 +3,20 @@
     <category label="Movies">
         <setting label="Automation" type="lsep"/>
         <setting id="movies.auto.active" label="Activate automation" type="bool" default="true"/>
-        <setting id="movies.import.auto" label="import on library (re)scan" type="bool" default="true" subsetting="true" enable="eq(-1,true)"/>
-        <setting id="movies.export.auto" label="export on watched status update" type="bool" default="true" subsetting="true" enable="eq(-2,true)"/>
-        <setting id="movies.auto.notify" label="notify on completion" type="bool" default="true" subsetting="true" enable="eq(-3,true)"/>
+        <setting id="movies.auto.notify" label="notify on completion" type="bool" default="true" subsetting="true" enable="eq(-1,true)"/>
 
-        <setting label="Tweaks" type="lsep"/>
-        <setting label="Import (from nfo):" enable="eq(-5,true) + eq(-4,true)"/>
-        <setting id="movies.import.autoclean" label="clean library on completion" type="bool" default="true" subsetting="true"/>
-        <setting label="Export (to nfo):" enable="eq(-7,true) + eq(-5,true)"/>
-        <setting id="movies.export.watched" label="export extra tag 'watched'" type="bool" default="true" subsetting="true"/>
-        <setting id="movies.export.userrating" label="export user rating" type="bool" default="true" subsetting="true"/>
-        <setting id="movies.export.rebuild" label="allow full nfo rebuild (experimental, activate only if you know what you're doing!)" type="bool" default="false" subsetting="true"/>
+        <setting label="General tweaks" type="lsep"/>
+        <setting id="movies.general.script" label="apply script to patch NFO:" type="bool" default="false" enable="eq(-3,true)"/>
+        <setting id="movies.general.script.path" label="script path:" type="file" default="" enable="eq(-1,true)" subsetting="true"/>
+        <setting id="movies.general.script.ignore_script_errors" label="ignore errors, and save NFO anyway (are you really sure?)" type="bool" default="false" enable="eq(-2,true)" subsetting="true"/>
+
+        <setting label="Import tweaks" type="lsep"/>
+        <setting id="movies.import.autoclean" label="clean library on completion" type="bool" default="true" enable="eq(-7,true)"/>
+
+        <setting label="Export tweaks" type="lsep"/>
+        <setting id="movies.export.watched" label="export extra tag 'watched'" type="bool" default="true" enable="eq(-9,true)"/>
+        <setting id="movies.export.userrating" label="export user rating" type="bool" default="true" enable="eq(-10,true)"/>
+        <setting id="movies.export.rebuild" label="allow full nfo rebuild (experimental, activate only if you know what you're doing!)" type="bool" default="false" enable="eq(-11,true)"/>
 
         <!-- <setting label="Kodi -> NFO" type="lsep"/>
         <setting id="movies.active" type="bool"/>
@@ -24,5 +27,6 @@
     </category>
     <category label="Debug">
       <setting label="Update library" type="action" action="UpdateLibrary(video)"/>
+      <setting id="debug.nb_threads" label="Nb threads" type="slider" default="2" range="0,25" option="int" visible="false"/>
     </category>
 </settings>

@@ -1,49 +1,52 @@
 from __future__ import unicode_literals
-import os.path
-import xbmcvfs
+import xbmc
 from resources.lib.helpers import addon
-from resources.lib.tasks import BaseTask, TaskError
+from resources.lib.tasks import BaseTask, TaskError, TaskJSONRPCError, TaskFileError, TaskScriptError
+from resources.lib.nfo import NFOHandlerError
+from resources.lib.nfo.movie_build import MovieNFOBuildHandler
 
 class ExportTaskError(TaskError):
     pass
-class ExportFileError(ExportTaskError):
+class ExportTaskJSONRPCError(ExportTaskError,TaskJSONRPCError):
+    pass
+class ExportTaskFileError(ExportTaskError, TaskFileError):
+    pass
+class ExportTaskScriptError(ExportTaskError, TaskScriptError):
     pass
 
 # base task for exporting a single video entry to nfo file
 class ExportTask(BaseTask):
-    JSONRPC_PROPS = [] # fields to be retrieved from library, to be overridden
-    TAGS = [] # tags to be inserted in nfo, to be overridden
+    def __init__(self, video_type, ignore_script = False, silent = False):
+        super(ExportTask, self).__init__('export', video_type, ignore_script, silent)
 
-    def __init__(self, monitor, video_type, video_id):
-        super(ExportTask, self).__init__(monitor, 'export', video_type)
-        self.video_id = video_id
-        # retrieve video details from the library
-        self.details = self.get_details(self.video_id, properties = self.JSONRPC_PROPS)
-        self.nfo_path = os.path.splitext(self.details['file'])[0] + '.nfo'
-
-        # copy tags, in order to add some more, if needed
-        self.tags = self.TAGS[:]
-        # optionally include 'watched' tag
+    # called when nfo content has been loaded
+    def on_nfo_loaded(self, nfo, result):
+        # optionally include 'watched' tag to XML content
         if (addon.getSettingBool('movies.export.watched')):
-            # add it to the list of tags to be built
-            self.tags.append('watched')
-            # also add into details, as it was not retrieved from library
-            self.details['watched'] = (self.details['playcount'] > 0)
-        # optionally include 'userrating' tag
+            nfo.add_tag('watched', replace = True)
+        # optionally include 'userrating' tag to XML content
         if (addon.getSettingBool('movies.export.userrating')):
-            # add it to the list of tags to be built
-            self.tags.append('userrating')
+            nfo.add_tag('userrating', replace = True)
 
+    # called when an exception was caught while processing the nfo handler
+    def on_nfo_load_failed(self, nfo, result):
+        # fallback to MovieNFOBuildHandler, in order to regenerate the file completely
+        # first check if correct setting is activated
+        if (nfo and nfo.family == 'load' and addon.getSettingBool('movies.export.rebuild')):
+            self.log.warning('  => rebuilding nfo file: \'%s\'' % nfo.nfo_path)
+            return MovieNFOBuildHandler(self, nfo.video_type, nfo.video_id)
+        else:
+            self.log.warning('  => no fallback NFO handler => skipping video')
+            return None
 
-    # main task method, the task will get destroyed on exit
-    def run(self):
-        return self.export()
+# task class for exporting a single video entry to nfo file
+class ExportSingleTask(ExportTask):
+    def __init__(self, video_type, video_id, ignore_script = False):
+        super(ExportSingleTask, self).__init__(video_type, ignore_script)
+        self.video_id = video_id
 
-    def write_nfo(self, content):
-        # delete file first, to bypass strange issues when the new file content is smaller than the previous one
-        xbmcvfs.delete(self.nfo_path)
-        # write file
-        fp = xbmcvfs.File(self.nfo_path, 'w')
-        result = fp.write(content)
-        fp.close()
-        return result
+    # populate the list of items (video IDs) to be processed
+    def populate_entries(self):
+        self.log.debug('exporting entry: %d' % self.video_id)
+        # we just have one item here
+        self.items = [ self.video_id ]
