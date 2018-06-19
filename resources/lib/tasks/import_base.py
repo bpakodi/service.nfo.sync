@@ -31,24 +31,6 @@ class ImportTask(BaseTask):
         self.this_run = time.time() # save run date of the current task, to override last_import on success
         self.save_resume_point = True # save run timestamp if task is successful
 
-    # called when nfo content has been actually saved (meaning content was modified)
-    def on_nfo_saved(self, nfo, result):
-        # refresh entry as it was modified
-        # note: Kodi will actually perform delete + add operations, which will result in a new entry id in the lib
-        try:
-            self.log.debug('refreshing %s: %s (%d)' % (nfo.video_type, nfo.video_title, nfo.video_id))
-            result = exec_jsonrpc('VideoLibrary.RefreshMovie', movieid=nfo.video_id, ignorenfo=False)
-            if (result != 'OK'):
-                self.log.warning('%s refresh failed for \'%s\' (%d)' % (self.video_type, nfo.video_path, nfo.video_id))
-                result.add_error(nfo, 'refresh failed')
-                return False
-            return True
-        except JSONRPCError as e:
-            self.log.warning('%s refresh failed for \'%s\' (%d)' % (self.video_type, nfo.video_path, nfo.video_id))
-            self.log.warning(e)
-            result.add_error(nfo, 'refresh failed: %s' % str(e))
-            return False
-
     # called when process completed; typically used for setting the result
     # returns: TaskResult object
     def on_process_finished(self, result):
