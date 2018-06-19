@@ -203,15 +203,14 @@ class BaseTask(object):
                     default_nfo = False # we will not use the default anymore
                     self.log.warning(e)
                     # try to fall back to another nfo handler
-                    self.log.debug('  -> klass(nfo): %s' % nfo.__class__.__name__)
                     try:
                         nfo = self.on_nfo_load_failed(nfo, result)
                     except Exception as e:
                         self.log.warning('error instantiating the fallback NFO handler')
                         self.log.warning(e)
                         self.log.warning('  => will not try further more => skipping this video')
-
-                    self.log.debug('  -> klass(nfo): %s' % nfo.__class__.__name__)
+                        nfo = None
+                        break
                     if (not nfo):
                         result.add_error(nfo, e) # a dummy error will be added, as nfo == None raises an exception
                         break
@@ -220,12 +219,21 @@ class BaseTask(object):
                 # skip this video if there is no valid NFOHandler
                 continue
 
+            # we need to track if the script was successful, in order to decide whether we can save or not
+            script_success = True
+
             # apply script to nfo content
             if (self.script and not self.ignore_script):
                 if (not self.apply_script(nfo)):
                     result.script_errors = True # not tracked in result.errors
+                    script_success = False
 
             # save nfo, and trigger event if content was actually modified
+            if (not script_success):
+                if (addon.getSettingBool('movies.general.script.ignore_script_errors')):
+                    self.log.warning('  => script error => ignoring and trying to save the NFO anyway [berserker mode]')
+                else:
+                    self.log.warning('  => script error => NOT saving the NFO')
             try:
                 modified = nfo.save()
                 if (modified):
@@ -276,7 +284,6 @@ class BaseTask(object):
         except ScriptError as e:
             self.log.warning('error executing script against nfo: %s' % nfo.nfo_path)
             self.log.warning(e)
-            self.log.warning('  => script error, please note that the nfo may have been altered by the code before the error')
             return False
 
     # can be overridden

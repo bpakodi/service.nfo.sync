@@ -8,14 +8,15 @@
         <setting label="General tweaks" type="lsep"/>
         <setting id="movies.general.script" label="apply script to patch NFO:" type="bool" default="false" enable="eq(-3,true)"/>
         <setting id="movies.general.script.path" label="script path:" type="file" default="" enable="eq(-1,true)" subsetting="true"/>
+        <setting id="movies.general.script.ignore_script_errors" label="ignore errors, and save NFO anyway (are you really sure?)" type="bool" default="false" enable="eq(-2,true)" subsetting="true"/>
 
         <setting label="Import tweaks" type="lsep"/>
-        <setting id="movies.import.autoclean" label="clean library on completion" type="bool" default="true" enable="eq(-6,true)"/>
+        <setting id="movies.import.autoclean" label="clean library on completion" type="bool" default="true" enable="eq(-7,true)"/>
 
         <setting label="Export tweaks" type="lsep"/>
-        <setting id="movies.export.watched" label="export extra tag 'watched'" type="bool" default="true" enable="eq(-8,true)"/>
-        <setting id="movies.export.userrating" label="export user rating" type="bool" default="true" enable="eq(-9,true)"/>
-        <setting id="movies.export.rebuild" label="allow full nfo rebuild (experimental, activate only if you know what you're doing!)" type="bool" default="false" enable="eq(-10,true)"/>
+        <setting id="movies.export.watched" label="export extra tag 'watched'" type="bool" default="true" enable="eq(-9,true)"/>
+        <setting id="movies.export.userrating" label="export user rating" type="bool" default="true" enable="eq(-10,true)"/>
+        <setting id="movies.export.rebuild" label="allow full nfo rebuild (experimental, activate only if you know what you're doing!)" type="bool" default="false" enable="eq(-11,true)"/>
 
         <!-- <setting label="Kodi -> NFO" type="lsep"/>
         <setting id="movies.active" type="bool"/>
