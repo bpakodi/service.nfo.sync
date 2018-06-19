@@ -16,6 +16,6 @@ class ImportSingleTask(ImportTask):
 
     # populate the list of items (video IDs) to be processed
     def populate_entries(self):
-        self.log.debug('importing entry: %d' % self.video_id)
+        self.log.debug('importing single entry: %d' % self.video_id)
         # we just have one item here
         self.items = [ self.video_id ]

@@ -95,7 +95,7 @@ class TaskResult(object):
                 # we consider status failed
                 self.status = 'failed'
 
-        self.title = '%s %s: %s processed' % (task_family, self.status, plural('video', self.nb_items))
+        self.title = '%s %s: %s' % (task_family, self.status, plural('video', self.nb_items))
 
         # process errors
         nfo_tokens = [ '%s modified' % plural('NFO', self.nb_modified) ]
@@ -275,7 +275,8 @@ class BaseTask(object):
             return True
         except ScriptError as e:
             self.log.warning('error executing script against nfo: %s' % nfo.nfo_path)
-            self.log.warning('  => script error, the nfo will NOT be updated')
+            self.log.warning(e)
+            self.log.warning('  => script error, please note that the nfo may have been altered by the code before the error')
             return False
 
     # can be overridden

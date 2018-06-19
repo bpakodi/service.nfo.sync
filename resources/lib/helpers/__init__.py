@@ -12,7 +12,7 @@ addon = xbmcaddon.Addon()
 addon_name = addon.getAddonInfo('name')
 addon_id = addon.getAddonInfo('id')
 addon_profile = xbmc.translatePath(addon.getAddonInfo('profile')).decode("utf-8")
-
+addon_icon = addon.getAddonInfo('icon')
 
 ##############################
 ### base exception classes ###

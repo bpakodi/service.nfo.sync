@@ -6,14 +6,7 @@ from resources.lib.helpers.log import Logger
 class ScriptError(Error):
     pass
 class ScriptExecError(ScriptError):
-    def __init__(self, err_msg, ex = None):
-        self.err_msg = err_msg
-        self.ex = ex
-    def __str__(self):
-        if (self.ex):
-            return '%s: %s: %s' % (self.err_msg, self.ex.__class__.__name__, str(self.ex))
-        else:
-            return '%s' % self.err_msg
+    pass
 class ScriptFileError(ScriptError):
     pass
 
