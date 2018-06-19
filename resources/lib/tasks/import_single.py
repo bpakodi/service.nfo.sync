@@ -7,8 +7,8 @@ class ImportSingleTaskError(ImportTaskError):
     pass
 
 class ImportSingleTask(ImportTask):
-    def __init__(self, video_type, video_id, ignore_script = False, last_import = None):
-        super(ImportSingleTask, self).__init__(video_type, ignore_script, last_import)
+    def __init__(self, video_type, video_id, ignore_script = False, silent = False, last_import = None):
+        super(ImportSingleTask, self).__init__(video_type, ignore_script, silent, last_import)
         if (not video_id):
             raise ImportSingleTaskError('empty %s ID' % self.video_type)
         self.video_id = video_id

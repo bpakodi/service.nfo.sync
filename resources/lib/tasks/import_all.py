@@ -10,8 +10,8 @@ class ImportAllTaskError(ImportTaskError):
     pass
 
 class ImportAllTask(ImportTask):
-    def __init__(self, video_type, ignore_script = False, last_import = None):
-        super(ImportAllTask, self).__init__(video_type, ignore_script, last_import)
+    def __init__(self, video_type, ignore_script = False, silent = False, last_import = None):
+        super(ImportAllTask, self).__init__(video_type, ignore_script, silent, last_import)
 
     # populate the list of entries (video details) to be processed
     def populate_entries(self):

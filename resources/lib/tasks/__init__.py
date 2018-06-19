@@ -7,7 +7,7 @@ import xbmcvfs
 
 from resources.lib.helpers import addon, plural, Error
 from resources.lib.helpers.log import Logger
-from resources.lib.helpers.jsonrpc import notify
+from resources.lib.helpers.jsonrpc import exec_jsonrpc, JSONRPCError, notify
 import resources.lib.library as Library
 LibraryError = Library.LibraryError # just as a convenience
 from resources.lib.script import FileScriptHandler, ScriptError
@@ -36,7 +36,7 @@ class Thread(BaseThread):
                 # Don't block
                 task = self.tasks.get(block=False)
                 task._run_from_thread()
-                del task
+                # del task
                 self.tasks.task_done()
             except Empty:
                 # Allow other stuff to run
@@ -83,6 +83,7 @@ class TaskResult(object):
         if (self.built):
             return
         self.built = True
+        self.title = '%s %s' % (task_family, self.status)
         if (self.status != 'complete'):
             self.title = self.status
             return
@@ -95,7 +96,7 @@ class TaskResult(object):
                 # we consider status failed
                 self.status = 'failed'
 
-        self.title = '%s %s: %s' % (task_family, self.status, plural('video', self.nb_items))
+        self.title = '%s: %s' % (self.title, plural('video', self.nb_items))
 
         # process errors
         nfo_tokens = [ '%s modified' % plural('NFO', self.nb_modified) ]
@@ -126,12 +127,13 @@ class TaskScriptError(TaskPathError):
 
 # Base class for tasks, to be derived for each video type: movies, tvshow, season, episode
 class BaseTask(object):
-    def __init__(self, task_family, video_type, ignore_script = False):
+    def __init__(self, task_family, video_type, ignore_script = False, silent = False):
         # create specific logger with namespace
         self.log = Logger(self.__class__.__name__)
         self.task_family = task_family
         self.video_type = video_type
         self.ignore_script = ignore_script
+        self.silent = silent
         # initialize some variables
         self.items = []
         self.script = None
@@ -238,8 +240,8 @@ class BaseTask(object):
                 modified = nfo.save()
                 if (modified):
                     self.log.info('saved nfo: \'%s\'' % nfo.nfo_path)
-                    if (self.on_nfo_saved(nfo, result)):
-                        result.modified.append(nfo.nfo_path) # add to processed only if saved
+                    if (self.on_nfo_saved(nfo, result) and self.refresh_nfo(nfo, result)):
+                        result.modified.append(nfo.nfo_path) # add to modified only if saved and refreshed
                 else:
                     self.log.debug('not saving to \'%s\': contents are identical' % nfo.nfo_path)
             except NFOHandlerError as e:
@@ -299,6 +301,7 @@ class BaseTask(object):
         pass
     # to be overridden
     # called when nfo content has been actually saved (meaning content was modified)
+    # if returning False, saving will be considered failed, and entry not noted as modified
     def on_nfo_saved(self, nfo, result):
         return True
     # to be overridden
@@ -314,15 +317,28 @@ class BaseTask(object):
 
     # log (and optionally visually notify) the results on task completion
     def notify_result(self, result, notify_user = False):
-        # process log
+        # build main log line
         if (result.lines):
             log_str = '%s: %s' % (result.title, ' / '.join(result.lines))
         else:
             log_str = result.title
 
-        self.log.log(log_str, xbmc.LOGERROR if (result.nb_errors or result.status != 'complete') else xbmc.LOGINFO)
+        # log title
+        log_level = xbmc.LOGERROR if (result.nb_errors or result.status != 'complete') else xbmc.LOGINFO
+        self.log.log(log_str, log_level)
+
+        # log errors and warnings
+        if (result.errors):
+            self.log.debug('Errors:')
+            for nfo_path, msg in result.errors:
+                self.log.debug('  >> %s: %s' % (nfo_path, msg))
+        if (result.warnings):
+            self.log.debug('Warnings:')
+            for msg in result.warnings:
+                self.log.debug('  >> %s' % msg)
+
         # optionally notify user
-        if (notify_user):
+        if (notify_user and not self.silent):
             notify('\n'.join(result.lines), result.title)
 
     # run external python script in a given context
@@ -337,4 +353,24 @@ class BaseTask(object):
             script.execute(locals_dict = locals_dict)
             self.log.debug('script executed: \'%s\'' % script_path)
         except ScriptError as e:
-            raise TaskScriptError(script_path, str(e))
+            self.log.warning('error executing script: %s' % script_path)
+            self.log.warning(e)
+            raise TaskScriptError(script_path, e)
+
+    # refresh the library entry corresponding to the given nfo handler
+    def refresh_nfo(self, nfo, result):
+        # refresh entry as it was modified
+        # note: Kodi will actually perform delete + add operations, which will result in a new entry id in the lib
+        try:
+            self.log.debug('refreshing %s: %s (%d)' % (nfo.video_type, nfo.video_title, nfo.video_id))
+            result = exec_jsonrpc('VideoLibrary.RefreshMovie', movieid=nfo.video_id, ignorenfo=False)
+            if (result != 'OK'):
+                self.log.warning('%s refresh failed for \'%s\' (%d)' % (self.video_type, nfo.video_path, nfo.video_id))
+                result.add_error(nfo, 'refresh failed')
+                return False
+            return True
+        except JSONRPCError as e:
+            self.log.warning('%s refresh failed for \'%s\' (%d)' % (self.video_type, nfo.video_path, nfo.video_id))
+            self.log.warning(e)
+            result.add_error(nfo, 'refresh failed: %s' % str(e))
+            return False
