@@ -1,4 +1,10 @@
-0.0.1: initial release
+v0.0.2 - 2018-06-19:
+  - New:
+    - Completely reorganize task-related classes (so everything basically)
+    - Far better logging and exception handling
+    - Allow user-defined Python scripting, to fully control the content of NFOs
+    - Artwork: definitely we need someone to help here
+v0.0.1 - 2018-06-13:
   - New:
     - Monitor: catch and manage some events
     - Import: scan modified nfo files and perform db entry refresh
