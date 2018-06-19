@@ -36,6 +36,7 @@ class Thread(BaseThread):
                 # Don't block
                 task = self.tasks.get(block=False)
                 task._run_from_thread()
+                del task
                 self.tasks.task_done()
             except Empty:
                 # Allow other stuff to run
@@ -46,10 +47,13 @@ class Thread(BaseThread):
 #############################################################
 
 class TaskResult(object):
-    def __init__(self, status = 'idle', lines = []):
+    def __init__(self, status = 'idle', lines = None): # do not assign [] as default value! http://docs.python-guide.org/en/latest/writing/gotchas/#mutable-default-arguments
         self.status = status
         self.title = ''
-        self.lines = lines if (isinstance(lines, list)) else [ lines ]
+        if (not lines):
+            self.lines = []
+        else:
+            self.lines = lines if (isinstance(lines, list)) else [ lines ]
         # we keep a track of some info here
         self.nb_items = 0
         self.modified = []
@@ -69,10 +73,15 @@ class TaskResult(object):
         return len(self.warnings)
 
     def add_error(self, nfo, ex):
-        self.errors.append([ nfo.nfo_path, str(ex) ])
+        if (nfo):
+            self.errors.append([ nfo.nfo_path, str(ex) ])
+        else:
+            self.errors.append([ '?', str(ex) ])
 
     # build the title and lines depending on results
-    def build(self):
+    def build(self, task_family = 'process'):
+        if (self.built):
+            return
         self.built = True
         if (self.status != 'complete'):
             self.title = self.status
@@ -86,15 +95,15 @@ class TaskResult(object):
                 # we consider status failed
                 self.status = 'failed'
 
-        self.title = '%s: %s processed' % (self.status, plural('video', self.nb_items))
+        self.title = '%s %s: %s processed' % (task_family, self.status, plural('video', self.nb_items))
 
         # process errors
-        nfo_tokens = [ '%s modified' % plural('NFO') ]
+        nfo_tokens = [ '%s modified' % plural('NFO', self.nb_modified) ]
         if (self.nb_errors > 0):
             nfo_tokens.append('%s' % plural('error', self.nb_errors))
         self.lines.append(', '.join(nfo_tokens))
 
-        if (result.script_errors):
+        if (self.script_errors):
             self.lines.append('script errors: see logs')
 
 #######################
@@ -127,22 +136,25 @@ class BaseTask(object):
         self.items = []
         self.script = None
 
+    def __del__(self):
+        self.log.debug('task destroyed')
+
     @property
     def signature(self):
         return '%s %s' % (self.video_type, self.task_family)
 
     # that is the method that is actually called from Thread.run()
     def _run_from_thread(self):
-        self.log.debug('initializing %s' % self.signature)
+        self.log.debug('initializing task: %s' % self.signature)
         self.run()
+        self.log.debug('task finished: %s' % self.signature)
 
     # main processing here, could be called directly
     def run(self):
         result = self.process() # result is a TaskResult object
-        if (not result.built):
-            # build result if it was sent early
-            result.build()
-
+        # build result to have proper title and lines
+        result.build(self.task_family)
+        # log and optionally notify user
         self.notify_result(result, notify_user = addon.getSettingBool('movies.auto.notify'))
 
     def process(self):
@@ -159,8 +171,9 @@ class BaseTask(object):
         if (len(self.items) == 0):
             return TaskResult('complete')
 
-        # instanciate a TaskResult object
+        # instantiate a TaskResult object
         result = TaskResult()
+        self.log.debug('instantiated result - lines = %s' % str(result.lines))
 
         # optionally load the script we will apply on all entries
         # we load the file now, in order to bypass it later if errors are encountered
@@ -177,20 +190,31 @@ class BaseTask(object):
         for video_id in self.items:
             # collect the nb of processed items in result
             result.nb_items += 1
-            # instanciate a nfo handler; we use a loop here, as the derived class can implement some fallback strategy if a handler fails (see on_nfo_load_failed())
+            # instantiate a nfo handler; we use a loop here, as the derived class can implement some fallback strategy if a handler fails (see on_nfo_load_failed())
+            default_nfo = True # at first, we want the default NFOHandler
             while (True):
                 try:
-                    nfo = self.get_nfo_handler(video_id)
+                    if (default_nfo):
+                        nfo = None # needed in case nfo cannot be instantiated
+                        nfo = self.get_nfo_handler(video_id)
                     nfo.make_xml()
                     self.on_nfo_loaded(nfo, result)
+                    break
                 except NFOHandlerError as e:
+                    default_nfo = False # we will not use the default anymore
                     self.log.warning(e)
                     e.dump(self.log.warning)
                     # try to fall back to another nfo handler
+                    self.log.debug('  -> klass(nfo): %s' % nfo.__class__.__name__)
                     nfo = self.on_nfo_load_failed(nfo, result)
+                    self.log.debug('  -> klass(nfo): %s' % nfo.__class__.__name__)
                     if (not nfo):
-                        result.add_error(nfo, e)
+                        result.add_error(nfo, e) # a dummy error will be added, as nfo == None raises an exception
                         break
+
+            if (not nfo):
+                # skip this video if there is no valid NFOHandler
+                continue
 
             # apply script to nfo content
             if (self.script and not self.ignore_script):
@@ -212,9 +236,9 @@ class BaseTask(object):
                 result.add_error(nfo, e)
 
         # build the result, to set title and lines; lines may be appended in event callback
+        self.log.debug('BaseTask.process() - end - result.lines = %s' % str(result.lines))
         result.status = 'complete'
-        result.build()
-        return self.on_process_completed(result)
+        return result
 
     # to be overridden
     # populate the list of entries (video details) to be processed
@@ -255,10 +279,10 @@ class BaseTask(object):
             return False
 
     # can be overridden
-    # instanciate the NFOHandler
+    # instantiate the NFOHandler
     def get_nfo_handler(self, video_id):
         # by default, load content from file
-        self.log.debug('instanciating NFOHandler')
+        self.log.debug('instantiating NFOHandler')
         return NFOLoadHandler(self, self.video_type, video_id)
 
     # to be overridden
@@ -278,8 +302,7 @@ class BaseTask(object):
     # called when process completed; typically used for last actions or tweaking the result
     # returns: TaskResult object
     def on_process_completed(self, result):
-        # this method will not be called if nb_items == 0, or the process aborted
-        return result
+        pass
 
     # log (and optionally visually notify) the results on task completion
     def notify_result(self, result, notify_user = False):

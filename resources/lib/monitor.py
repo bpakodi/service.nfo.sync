@@ -57,7 +57,7 @@ class NFOMonitor(xbmc.Monitor):
                 # gracefully return
                 return
             self.log.info('watched status updated => launching ExportSingleTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
-            self.add_task(ExportSingleTask(data_dict['item']['type'], data_dict['item']['id'], strategy = 'update')) # we will try to update the NFO, before (optionally) try to rebuild it
+            self.add_task(ExportSingleTask(data_dict['item']['type'], data_dict['item']['id']))
         elif (method == 'VideoLibrary.OnUpdate' and 'added' in data_dict and data_dict['added'] == True):
             self.log.info('new entry added => we need to check if it needs refresh => launching ImportSingleTask for %s #%d' % (data_dict['item']['type'], data_dict['item']['id']))
             self.add_task(ImportSingleTask(data_dict['item']['type'], data_dict['item']['id']))

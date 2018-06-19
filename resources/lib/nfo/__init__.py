@@ -11,10 +11,10 @@ class NFOHandlerError(Error):
         self.nfo = nfo
 
 # base class for managing I/O with a NFO file
-# the handler is given video_details in args, and is responsible for instanciating soup related vars
+# the handler is given video_details in args, and is responsible for instantiating soup related vars
 # basically it holds soup, root, and old_raw members, as well as all details about the video
 class NFOHandler(object):
-    JSONRPC_PROPS = ['file'] # fields to get from library
+    JSONRPC_PROPS = ['file', 'playcount', 'userrating'] # fields to get from library
 
     def __init__(self, task, video_type, video_id, family = 'load'):
         self.family = family
@@ -26,10 +26,10 @@ class NFOHandler(object):
         # the list of needed props is provided by the handler itself
         try:
             self.entry = Library.get_details(self.video_type, self.video_id, properties = self.JSONRPC_PROPS)
-            # also add watched, derived from details, as it is used by export tasks
-            self.entry['watched'] = (self.entry['playcount'] > 0)
         except LibraryError as e:
             raise NFOHandlerError('error retrieving video details from library', ex = e.ex)
+        # simulate a watched prop in lib entry, that can be useful in derived classes
+        self.entry['watched'] = (self.entry['playcount'] > 0)
         # set some useful vars
         self.video_path = self.entry['file']
         self.nfo_path = get_nfo_path(self.video_path)
@@ -59,7 +59,7 @@ class NFOHandler(object):
     # append a tag to root node
     # value may be either a string, a Tag to be inserted inside the new element, or None
     # if None, value will be retrieved from the entry details
-    def add_tag(self, tag_name, value = None, parent = None):
+    def add_tag(self, tag_name, value = None, parent = None, replace = False):
         # get default value from details if needed
         if (not value):
             try:
@@ -71,6 +71,9 @@ class NFOHandler(object):
             parent = self.root
         # update the XML tree
         try:
+            # optionally remove all tags with same name
+            if (replace):
+                self.del_tags(tag_name, parent = parent)
             # append the element to root
             elt = self.soup.new_tag(tag_name)
             parent.append(elt)
@@ -80,8 +83,25 @@ class NFOHandler(object):
             else:
                 elt.string = str(value)
             return elt
+        except NFOHandlerError:
+            raise
         except Exception as e:
-            raise NFOHandlerError('error updating the XML content', self.nfo_path, e)
+            raise NFOHandlerError('error updating the XML content (add)', self.nfo_path, e)
+
+    # append a tag to root node
+    # value may be either a string, a Tag to be inserted inside the new element, or None
+    # if None, value will be retrieved from the entry details
+    def del_tags(self, tag_name, parent = None):
+        # get default value from details if needed
+        # by default, appending to root node
+        if (not parent):
+            parent = self.root
+        # update the XML tree
+        try:
+            for elt in parent.find_all(tag_name, recursive = False):
+                elt.decompose()
+        except Exception as e:
+            raise NFOHandlerError('error updating the XML content (del)', self.nfo_path, e)
 
 
 # load content from file
@@ -104,9 +124,9 @@ class NFOBuildHandler(NFOHandler):
     # initialize the soup, root, old_raw members
     def make_xml(self):
         # build new XML content
-        soup = BeautifulSoup('', 'html.parser')
-        root = soup.new_tag(self.video_type)
-        soup.append(root)
+        self.soup = BeautifulSoup('', 'html.parser')
+        self.root = self.soup.new_tag(self.video_type)
+        self.soup.append(self.root)
 
         # append child nodes
         try:

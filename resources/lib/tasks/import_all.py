@@ -26,8 +26,6 @@ class ImportAllTask(ImportTask):
         except LibraryError as e:
             raise TaskJSONRPCError('error retrieving the list of %ss' % self.video_type, e.ex)
 
-        raise ImportAllTaskError('debug')
-
         for entry in entries:
             # check the modification timestamp of each nfo file
             if (self.inspect_nfo(entry['file'])):

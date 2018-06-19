@@ -23,10 +23,10 @@ class ExportTask(BaseTask):
     def on_nfo_loaded(self, nfo, result):
         # optionally include 'watched' tag to XML content
         if (addon.getSettingBool('movies.export.watched')):
-            nfo.add_tag('watched')
+            nfo.add_tag('watched', replace = True)
         # optionally include 'userrating' tag to XML content
         if (addon.getSettingBool('movies.export.userrating')):
-            nfo.add_tag('userrating')
+            nfo.add_tag('userrating', replace = True)
 
     # called when an exception was caught while processing the nfo handler
     def on_nfo_load_failed(self, nfo, result):
@@ -34,7 +34,7 @@ class ExportTask(BaseTask):
         # first check if correct setting is activated
         if (nfo and nfo.family == 'load' and addon.getSettingBool('movies.export.rebuild')):
             self.log.warning('  => rebuilding nfo file: \'%s\'' % nfo.nfo_path)
-            return MovieNFOBuildHandler('rebuild', nfo.nfo_path)
+            return MovieNFOBuildHandler(self, nfo.video_type, nfo.video_id)
         else:
             self.log.warning('  => no fallback NFO handler => skipping video')
             return None

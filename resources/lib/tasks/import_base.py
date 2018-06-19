@@ -63,7 +63,7 @@ class ImportTask(BaseTask):
 
         # if we do not save the resume point, then we will not notify the user
         if (not self.save_resume_point):
-            return result
+            return
 
         # if everything is fine, save the run datetime as the new import resume point
         if (not result.script_errors and not result.errors):
