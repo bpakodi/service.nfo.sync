@@ -1,19 +1,12 @@
 from __future__ import unicode_literals
 import xbmcvfs
-from resources.lib.helpers.exceptions import Error
+from resources.lib.helpers import Error
 from resources.lib.helpers.log import Logger
 
 class ScriptError(Error):
     pass
 class ScriptExecError(ScriptError):
-    def __init__(self, err_msg, ex = None):
-        self.err_msg = err_msg
-        self.ex = ex
-    def __str__(self):
-        if (self.ex):
-            return '%s: %s: %s' % (self.err_msg, self.ex.__class__.__name__, str(self.ex))
-        else:
-            return '%s' % self.err_msg
+    pass
 class ScriptFileError(ScriptError):
     pass
 
@@ -39,7 +32,6 @@ class ScriptHandler(object):
     def execute(self, locals_dict = {}):
         # check that we have content at least
         if (not self.content):
-            self.log.warning('empty content => nothing to execute')
             return
 
         # preset the locals dict
@@ -54,7 +46,7 @@ class ScriptHandler(object):
         try:
             exec(self.content, {}, _locals_dict)
         except Exception as e:
-            raise ScriptExecError('script error', e)
+            raise ScriptExecError('script execution failed', e)
 
 # file script handler
 class FileScriptHandler(ScriptHandler):
